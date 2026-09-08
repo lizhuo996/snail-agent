@@ -1,0 +1,5 @@
+# 可选：离线 OCR（图片批量文字提取，D9）。
+# 依赖较重（paddlepaddle），基础环境不默认安装；需要图片批量建库/离线 OCR 时再装。
+# 代码中 PaddleOCR 为可选导入，未装时回退多模态通道或明确报错。
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0

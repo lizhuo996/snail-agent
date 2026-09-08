@@ -3,14 +3,20 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic-settings>=2.4.0
 
-# LLM + 向量（DashScope 走 OpenAI 兼容接口）
+# LLM + 向量（DashScope 走 OpenAI 兼容接口；多模态 qwen-vl 走同一接口）
 openai>=1.40.0
 
-# 文档解析（建库原料）
+# 网页抓取与解析
+httpx>=0.27.0           # 抓取网页正文
+
+# 文档解析（建库原料 + 对话上传）
 pymupdf>=1.24.0         # PDF 正文解析
 pdfplumber>=0.11.0      # PDF 表格提取
 python-docx>=1.1.0      # Word 解析
-beautifulsoup4>=4.12.0  # HTML 攻略解析（可选）
+openpyxl>=3.1.0         # Excel 解析
+python-pptx>=1.0.0      # PPT 解析
+pandas>=2.2.0           # Excel 多 sheet/DataFrame 处理
+beautifulsoup4>=4.12.0  # HTML 网页正文提取
 
 # 数值/文本（向量近似检索、BM25）
 numpy>=1.26.0           # 向量点积/余弦相似度计算

@@ -46,3 +46,30 @@
   2. 需求未确认不进设计；设计未记录 ADR 不写代码；代码未过 pytest 不视为完成；
   3. 新增依赖必须写入 requirements*.txt 并注明选型理由；
   4. 跨模块数据模型统一放在 `server/core/models.py`，禁止各模块重复定义。
+
+## D8 多模态/文档解析能力：场景 A（对话直接解析）+ 场景 B（建库批量解析）都要
+- 日期：2026-09-08
+- 背景：用户要求智能体"可以直接看网页、文档、图片、文本，需要解析图片内容"，确认两种场景都要。
+- 决策：
+  1. 场景 A：聊天接口支持用户上传图片/文档、粘贴网页链接/文本，智能体解析后结合知识库回答；
+  2. 场景 B：建库阶段把这些格式作为原材料自动解析收录进知识库；
+  3. 统一的解析层（server/rag/parser.py 等）封装各类格式提取文本，两种场景复用同一套解析函数；
+  4. 解析结果统一走"轻量混检"入库或拼进对话上下文（2.4）。
+
+## D9 图片内容解析：多模态大模型 + 离线 OCR 双通道，按需切换
+- 日期：2026-09-08
+- 背景：用户确认图片解析"两者都要"（多模 + 离线 OCR）。
+- 决策：
+  1. **多模态通道**：用通义千问 qwen-vl（DashScope 多模态）直接看懂图片、提取语义，走 OpenAI 兼容接口 image_url，无需本地重型依赖；适合对话中理解用户截图；
+  2. **离线 OCR 通道**：用 PaddleOCR 本地批量提取文字，离线可跑，适合建库时大量攻略截图文字化；
+  3. 通道策略：对话单张/少量图用多模；批量建库优先离线 OCR；
+  4. PaddleOCR 依赖较重（paddlepaddle），列为**可选依赖**（requirements-ocr.txt），代码可选导入；未装时回退多模态通道或明确报错，不影响基础环境；
+  5. embedding 仍用 text-embedding-v3 对提取出的文本做索引（同一套 D3）。
+
+## D10 文档/网页解析格式扩展：PDF/Word/Excel/PPT/HTML/文本
+- 日期：2026-09-08
+- 背景：用户确认文档/文本类要支持"更多格式（含 Excel/PPT 等）"。
+- 决策：解析层（server/rag/parser.py）按扩展名分发：
+  - 网页：httpx 抓取 + BeautifulSoup 提取正文（去导航/广告）；
+  - PDF：pymupdf + pdfplumber；Word：python-docx；Excel：openpyxl/pandas（含多 sheet）；PPT：python-pptx；纯文本：直接；
+  - 新增依赖：httpx、pandas、python-pptx（openpyxl、beautifulsoup4 已在要求中），写入 requirements.txt；PaddleOCR 单独 requirements-ocr.txt（D9）。
