@@ -1,0 +1,40 @@
+# 环境配置
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# 知识库原文（版权保护，不入库，只留建库脚本与脱敏示例）
+knowledge/raw/*
+!knowledge/raw/.gitkeep
+
+# 运行时数据（SQLite 知识库、管理配置等落盘文件）
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 日志
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

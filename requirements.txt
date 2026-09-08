@@ -1,0 +1,17 @@
+# 服务/框架
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic-settings>=2.4.0
+
+# LLM + 向量（DashScope 走 OpenAI 兼容接口）
+openai>=1.40.0
+
+# 文档解析（建库原料）
+pymupdf>=1.24.0         # PDF 正文解析
+pdfplumber>=0.11.0      # PDF 表格提取
+python-docx>=1.1.0      # Word 解析
+beautifulsoup4>=4.12.0  # HTML 攻略解析（可选）
+
+# 数值/文本（向量近似检索、BM25）
+numpy>=1.26.0           # 向量点积/余弦相似度计算
+rank-bm25>=0.2.2        # 关键词 BM25 混检（D4）
