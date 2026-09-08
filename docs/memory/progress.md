@@ -16,6 +16,7 @@
 - 新增 ADR D1~D7（定位/FastAPI+LLM/embedding/SQLite轻量检索/工具层预留/管理后台/SDLC）
 
 **下一步**
+- [x] 已建远端私有仓 https://github.com/lizhuo996/snail-agent 并 push master（0f79128）
 - [ ] 业务方确认需求说明（重点：Demo 范围、攻略版权边界、是否要分类标签、密令结构化接口）
 - [ ] 确认后进 ②设计：技术路线与详细设计 + 里程碑 M1/M2/M3
 - [ ] M0 管理骨架 + P1 知识库检索/RAG 问答开发
