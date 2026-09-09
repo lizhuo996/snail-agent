@@ -2,6 +2,28 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（③开发 P0+P1 骨架）
+
+**完成（P0 地基 + P1 核心骨架，全部离线测试通过）**
+- `server/core/config.py`：配置中心（DashScope key/模型/检索参数/KB 路径，读 .env）
+- `server/core/models.py`：统一数据模型 Document/Chunk(tags 多标签)/ParsedContent/Code（D11/D12/D13）
+- `server/core/llm.py`：OpenAI 兼容客户端（embed_texts 分批向量化/chat_stream 流式），Key 缺失中文报错
+- `server/rag/parser.py`：PDF/Word/Excel/PPT/HTML/txt/md 解析分发，图片 P2 占位
+- `server/rag/chunker.py`：500/上限800/重叠80，句子边界切分
+- `server/rag/kb.py`：SQLite 库 documents/chunks/codes 三表 + numpy 余弦 + rank-bm25 混检（w=0.4）+ 多标签 OR 过滤 + codes 结构化查询（D4/D13）
+- `server/api/main.py`：FastAPI + /api/health + /api/kb/stats + 静态聊天页
+- `server/api/routes_chat.py`：/api/chat SSE 流式（密令提问先走 query_codes 精确回答，密令卡片支持复制一行一条）+ /api/codes
+- `scripts/build_kb.py`：解析→切块→向量化→入库，支持 --keep/--tags/--skip-embed
+- `web/index.html`：手机端风格聊天页，SSE 流式渲染 + 来源标注 + 密令卡片复制
+- 依赖补齐安装：python-pptx、beautifulsoup4、rank-bm25（已进 requirements.txt）
+- 18 个 pytest 全部通过；已用脱敏示例跑通建库全流程；uvicorn 启服务 /api/health 正常
+- 测试中发现并修复：scripts 里 server 不在 sys.path、无扩展名文件（.gitkeep）误入建库、clear 多语句执行问题
+
+**下一步**
+- [ ] 配 .env：DASHSCOPE_API_KEY 后，跑 `scripts/build_kb.py` 建真实攻略库并实测 RAG 问答质量
+- [ ] 进 P2：图片/多模态解析、QQ 聊天渠道对接
+- [ ] 真实攻略材料来源/版权边界确认（demo 阶段用脱敏示例）
+
 ## 2026-09-08 | 开发机（密令复制功能补充）
 
 **完成（密令复制功能）**
