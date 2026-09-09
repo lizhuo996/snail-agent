@@ -63,12 +63,15 @@ def chat(req: ChatRequest) -> StreamingResponse:
 
 def _stream(question: str, top_k: int, tags: Optional[List[str]]) -> Generator[str, None, None]:
     try:
-        # 1. 密令提问优先走结构化（D13）：命中则直接给答案
+        # 1. 密令提问优先走结构化（D13）：精确命中直接答；泛指“有什么密令”则列表全部
         hits = get_kb().search_codes(question)
+        if not hits and any(w in question for w in ("密令", "兑换码", "口令")):
+            hits = get_kb().search_codes()  # 全部生效中
         if hits:
             lines = []
             for c in hits:
-                lines.append(f"密令【{c['text']}】：{c['reward']}（{c['status']}）")
+                reward = c["reward"].strip() or "奖励待补充"
+                lines.append(f"密令【{c['text']}】：{reward}（{c['status']}）")
             yield _sse("sources", [{"source": f"密令库 共{len(hits)}条生效", "clause": "query_codes", "score": 1.0}])
             yield _sse("delta", {"content": "查到以下生效中的密令：\n\n" + "\n".join(lines)})
             yield _sse("done", {})

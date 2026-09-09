@@ -129,8 +129,10 @@ async function ask() {
       const parts = buf.split('\n\n');
       buf = parts.pop();
       for (const part of parts) {
-        if (!part.startsWith('data:')) continue;
-        let evt; try { evt = JSON.parse(part.slice(5).trim()); } catch(e) { continue; }
+        // SSE 块含 event:+data: 两行，取 data: 行解析（不能以整块 startsWith，块首是 event:）
+        const dataLine = part.split('\n').find(l => l.startsWith('data:'));
+        if (!dataLine) continue;
+        let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { continue; }
         if (evt.sources) {
           sources = evt.sources;
           node.innerHTML = '';
@@ -143,7 +145,10 @@ async function ask() {
         }
       }
     }
-    // render sources / 密令复制按钮
+    // rener sources / 密令复制按钮
+    if (!(sources||[]).length && !full.trim()) {
+      node.innerHTML = '<div class="err">⚠ 服务端未返回内容（知识库可能为空，或 Key 未配置）</div>';
+    }
     if (!codeCard && (sources||[]).length) {
       const isCodes = (sources||[]).some(s => (s.source||'').includes('密令库'));
       const srcWrap = document.createElement('div');
