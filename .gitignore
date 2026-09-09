@@ -5,6 +5,9 @@
 secrets/*
 !secrets/dashscope.key.example
 
+# 百炼 apiKey 下载文件（含真实 Key，放在本机供配置参考，绝不入库）
+docs/reference/*apiKey*.csv
+
 # Python
 __pycache__/
 *.py[cod]

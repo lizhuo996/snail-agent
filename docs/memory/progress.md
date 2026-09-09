@@ -2,6 +2,23 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（配置真 Key + 全链路实测通过）
+
+**完成（真 Key 配置 + 端到端验证）**
+- 用户提供 docs/reference 下阿里云百炼 apiKey csv（含真实 Key 与专属 endpoint），已配置：
+  - Key → `secrets/dashscope.key`（gitignore）
+  - 专属兼容 endpoint（ws-9spiuint1t7qzds8.cn-beijing.maas.aliyuncs.com/compatible-mode/v1）→ `.env`（gitignore）
+  - `.gitignore` 新增 `docs/reference/*apiKey*.csv`，敏感 csv 确认不入库
+- 实测连通：embedding 1024 维 OK（HTTP 200）、qwen-plus 对话流式 OK
+- 用脱敏示例建真实知识库（真 embedding）→ 启动服务(19240) → /api/health `api_key_configured: True`
+- **发现并修复 bug**：检索 score 为 numpy.float32 导致 SSE JSON 序列化失败（`Object of type float32 is not JSON serializable`），kb.py 改为 `float()` 强转
+- 全链路验证通过：sources（来源+相关度 0.6）→ delta 流式回答 → done
+
+**下一步**
+- [ ] 用户把真实攻略放入 `knowledge/raw/` 后，`scripts/build_kb.py` 重建知识库（会清掉脱敏示例）
+- [ ] 密令数据提供后录入 codes 表，演示 query_codes
+- [ ] 进 P2：图片/多模态解析、QQ 聊天渠道对接
+
 ## 2026-09-09 | 开发机（密钥单独存放）
 
 **完成（Key 单独存放）**

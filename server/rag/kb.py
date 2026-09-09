@@ -185,7 +185,7 @@ class KB:
 
         result = sorted(merged.values(), key=lambda h: h["score"], reverse=True)[:top_k]
         for h in result:
-            h["score"] = round(h["score"], 4)
+            h["score"] = round(float(h["score"]), 4)
         return result
 
     def _bm25_rank(self, query: str, rows, top_k: int) -> List[tuple[int, float]]:
