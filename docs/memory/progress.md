@@ -2,6 +2,22 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（P2 多模态/文档解析落地）
+
+**完成**
+- `server/core/vision.py`：ImageReader 接口 + 双通道——qwen-vl（OpenAI 兼容 image_url base64）+ PaddleOCR（可选依赖延迟导入）；read_image(path, channel) 支持 vl/ocr/auto
+- `server/rag/parser.py`：图片经 vision 解析，回填 source_type="image" 与 meta.image_channel
+- 场景A（对话直接解析）：`POST /api/chat-upload`（multipart：question+files+url+text）→ 解析并入上下文（标注"优先作为最新依据"）+ SSE `parsed` 事件回显；`/api/parse`、`/api/parse-url` 独立工具接口
+- 场景B（建库批量）：`scripts/build_kb.py` 默认解析图片（--no-images 关，--image-channel 切通道），支持 --urls 网页批量入库
+- 聊天页：附件多选 chips + 链接输入条，有附件走 chat-upload，parsed 卡片回显
+- 新增依赖 python-multipart；30 个 pytest 全过
+- ADR：D14（对话侧解析流程）、D15（vision 双通道实现）、D16（BM25 极小语料修复）；设计文档 P2 标记已落地
+
+**下一步**
+- [ ] 真实冒烟：重启服务验证 /api/chat-upload（含一张真实攻略截图走 qwen-vl）
+- [ ] 用户提供真实攻略 → build_kb 全量重建（图片走 OCR）
+- [ ] QQ 渠道对接（仍属 P2 预留，等用户确认是否本期做）
+
 ## 2026-09-09 | 开发机（P3 管理后台 v1）
 
 **完成（管理后台第一版，25 个 pytest 全过）**

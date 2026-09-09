@@ -4,12 +4,15 @@ import json
 import logging
 from typing import Generator, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from server.core.llm import chat_stream, embed_texts
+from server.core.models import ParsedContent
 from server.rag import kb as kb_mod
+from server.rag.parser import parse_url
+from fastapi import HTTPException
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -34,6 +37,12 @@ class ChatRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     top_k: int = Field(default=5, ge=1, le=20)
     tags: Optional[List[str]] = Field(default=None, description="多标签过滤（D12，任一命中即可）")
+
+
+class ChatAttachReq(BaseModel):
+    url: Optional[str] = None
+    text: Optional[str] = None
+    title: str = ""
 
 
 def _sse(event: str, data) -> str:
@@ -61,7 +70,18 @@ def chat(req: ChatRequest) -> StreamingResponse:
     )
 
 
-def _stream(question: str, top_k: int, tags: Optional[List[str]]) -> Generator[str, None, None]:
+def _stream(question: str, top_k: int, tags: Optional[List[str]],
+            attachments: Optional[List[dict]] = None,
+            **_) -> Generator[str, None, None]:
+    # attachments: [{"title","text","source_type","meta"}...]（P2 场景A 对话侧解析）
+    if attachments:
+        yield _sse("parsed", {
+            "parts": [
+                {"title": a.get("title", ""), "type": a.get("source_type", ""),
+                 "excerpt": a.get("text", "")[:200]}
+                for a in attachments
+            ],
+        })
     try:
         # 1. 密令提问优先走结构化（D13）：精确命中直接答；泛指“有什么密令”则列表全部
         hits = get_kb().search_codes(question)
@@ -95,6 +115,11 @@ def _stream(question: str, top_k: int, tags: Optional[List[str]]) -> Generator[s
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"【攻略依据】\n{context or '（知识库为空）'}\n\n【问题】\n{question}"},
         ]
+        if attachments:
+            attach_block = "\n\n".join(
+                f"【你本次上传的文件：{a.get('title', '附件')}】\n{a.get('text', '')}" for a in attachments
+            )
+            messages[1]["content"] += f"\n\n【用户上传的补充材料（优先作为最新依据）】\n{attach_block}"
         for delta in chat_stream(messages):
             yield _sse("delta", {"content": delta})
         yield _sse("done", {})
@@ -104,3 +129,40 @@ def _stream(question: str, top_k: int, tags: Optional[List[str]]) -> Generator[s
     except Exception as e:
         log.exception("问答异常")
         yield _sse("error", {"message": f"服务异常: {e}"})
+
+
+@router.post("/chat-upload")
+async def chat_upload(
+    question: str = Form(..., min_length=1, max_length=2000),
+    top_k: int = Form(5),
+    files: List[UploadFile] = File(default=[]),
+    url: Optional[str] = Form(None),
+    text: Optional[str] = Form(None),
+):
+    """对话侧解析（P2 场景A）：可同时带 图片/文档(files)/网页链接(url)/粘帖文本(text)。
+
+    解析结果经 parsed 事件回显，并入上下文后进入正常问答流。
+    """
+    from server.api.routes_upload import parse_attachments
+
+    attachments: List[dict] = []
+    if url:
+        try:
+            content = parse_url(url)
+        except Exception as e:
+            raise HTTPException(400, f"网页解析失败：{e}")
+        attachments.append({"title": content.title or url, "text": content.text,
+                            "source_type": content.source_type, "meta": content.meta})
+    if text:
+        attachments.append({"title": "粘贴文本", "text": text,
+                            "source_type": "text", "meta": {}})
+    contents, _ = parse_attachments(files or [])
+    for content in contents:
+        attachments.append({"title": content.title or "附件", "text": content.text,
+                            "source_type": content.source_type, "meta": content.meta})
+
+    return StreamingResponse(
+        _stream(question, top_k, None, attachments=attachments),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

@@ -13,12 +13,21 @@
   #kb-status { font-size:12px; color:var(--muted); }
   #chatbox { flex:1; overflow-y:auto; padding:20px; max-width:820px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
   .bar { padding:12px 20px; background:var(--panel); border-top:1px solid #2e3342; }
+  .toolrow { display:flex; align-items:center; gap:10px; max-width:820px; margin:0 auto 8px; flex-wrap:wrap; }
+  .pick { font-size:13px; color:var(--muted); cursor:pointer; padding:5px 10px; border:1px solid #2e3342; border-radius:8px; }
+  .pick:hover { border-color:var(--accent); color:var(--text); }
+  #urlInput { flex:1; min-width:160px; padding:6px 10px; border-radius:8px; border:1px solid #2e3342; background:var(--panel2); color:var(--text); font-size:12px; }
+  #urlInput::placeholder { color:#5d6678; }
+  #fileChips { display:flex; flex-wrap:wrap; gap:6px; max-width:820px; margin:0 auto 6px; }
+  .chip { font-size:12px; background:var(--panel2); border:1px solid #2e3342; padding:3px 8px; border-radius:10px; color:var(--muted); }
+  .chip b { color:var(--text); font-weight:normal; }
+  .chip .x { cursor:pointer; margin-left:6px; color:#ff6b6b; }
   .inrow { display:flex; gap:8px; max-width:820px; margin:0 auto; }
   .inrow input { flex:1; padding:12px 14px; border-radius:8px; border:1px solid #2e3342; background:var(--panel2); color:var(--text); }
   .inrow input:focus { outline:none; border-color:var(--accent); }
   .send { padding:12px 22px; border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer; }
   .send:disabled { opacity:.5; cursor:not-allowed; }
-  .msg { max-width:78%; }
+  .msg { max-width:82%; }
   .msg.user { align-self:flex-end; background:var(--accent); padding:10px 14px; border-radius:12px 12px 2px 12px; }
   .msg.ai { align-self:flex-start; background:var(--panel); padding:12px 14px; border-radius:12px 12px 12px 2px; white-space:pre-wrap; line-height:1.7; }
   .sources { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
@@ -29,6 +38,9 @@
   .coderow { display:flex; justify-content:space-between; gap:10px; background:var(--panel2); padding:8px 12px; border-radius:8px; font-size:14px; }
   .coderow .reward { color:var(--muted); font-size:13px; }
   .copy-btn { margin-top:8px; background:var(--panel2); border:1px solid #2e3342; color:var(--text); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .att-box { margin-bottom:8px; background:var(--panel2); border:1px solid #2e3342; border-radius:8px; padding:8px 10px; font-size:12px; color:var(--muted); }
+  .att-box b { color:var(--text); }
+  .att-box .excerpt { margin-top:4px; color:#7d8699; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 </style>
 </head>
 <body>
@@ -38,8 +50,13 @@
 </header>
 <main id="chatbox"></main>
 <footer class="bar">
+  <div id="fileChips"></div>
+  <div class="toolrow">
+    <label class="pick">📎 上传图片/文档<input type="file" id="fileInput" multiple hidden accept=".pdf,.docx,.xlsx,.pptx,.html,.htm,.txt,.md,.png,.jpg,.jpeg,.gif,.webp,.bmp"></label>
+    <input id="urlInput" placeholder="🔗 可粘贴网页链接，与问题一起发送（可选）" autocomplete="off">
+  </div>
   <div class="inrow">
-    <input id="input" placeholder="例：新手前期刷哪个图？本周抽奖周怎么打？有什么密令？" autocomplete="off">
+    <input id="input" placeholder="例：新手前期刷哪个图？这周的图怎么打？有什么密令？" autocomplete="off">
     <button class="send" id="send">发送</button>
   </div>
 </footer>
@@ -47,6 +64,10 @@
 const box = document.getElementById('chatbox');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
+const fileInput = document.getElementById('fileInput');
+const urlInput = document.getElementById('urlInput');
+const chipWrap = document.getElementById('fileChips');
+let selectedFiles = [];
 
 async function kbStatus() {
   try {
@@ -70,6 +91,26 @@ function addAi() {
 }
 function scroll() { box.scrollTop = box.scrollHeight; }
 
+// 附件 chips
+function renderChips() {
+  chipWrap.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const span = document.createElement('span');
+    span.className = 'chip';
+    span.innerHTML = `<b>${f.name}</b> (${(f.size/1024).toFixed(0)}KB)`;
+    const x = document.createElement('span');
+    x.className = 'x'; x.textContent = '✕';
+    x.onclick = () => { selectedFiles.splice(i,1); renderChips(); };
+    span.appendChild(x);
+    chipWrap.appendChild(span);
+  });
+}
+fileInput.addEventListener('change', () => {
+  selectedFiles = [...selectedFiles, ...[...fileInput.files]];
+  fileInput.value = '';
+  renderChips();
+});
+
 // 把回答文本渲染进节点：密令块用卡片样式，其余按原文显示
 let pendingCodes = [];
 function renderDelta(node, text) {
@@ -91,7 +132,7 @@ function renderDelta(node, text) {
 }
 function waitCodes() { return pendingCodes; }
 function copyCodes(btn, codes) {
-  const text = codes.map(c => c.code).join('\n'); // 一行一条纯密令
+  const text = codes.map(c => c.code).join('\n');
   const done = () => { const old = btn.textContent; btn.textContent = `✔ 已复制 ${codes.length} 条`; setTimeout(() => btn.textContent = old, 1500); };
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).then(done, () => legacyCopy(text, done));
@@ -108,15 +149,31 @@ function legacyCopy(text, done) {
 async function ask() {
   const q = input.value.trim();
   if (!q) return;
-  addUser(q); input.value = ''; sendBtn.disabled = true;
+  addUser(q); input.value = '';
+  const attachLabel = selectedFiles.length ? `（附带 ${selectedFiles.length} 个附件${urlInput.value.trim() ? ' + 一个网页链接' : ''}）` : (urlInput.value.trim() ? '（附带网页链接）' : '');
+  if (attachLabel && (selectedFiles.length || urlInput.value.trim())) addUser(attachLabel);
+  sendBtn.disabled = true;
   const node = addAi();
   let sources = [];
+  let attachRendered = false;
 
   try {
-    const resp = await fetch('/api/chat', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question: q, top_k: 5})
-    });
+    const useAttach = selectedFiles.length || urlInput.value.trim();
+    const fd = new FormData();
+    fd.append('question', q); fd.append('top_k', '5');
+    const url = urlInput.value.trim();
+    if (url) fd.append('url', url);
+    selectedFiles.forEach(f => fd.append('files', f));
+    let resp;
+    if (useAttach) {
+      resp = await fetch('/api/chat-upload', { method: 'POST', body: fd });
+    } else {
+      resp = await fetch('/api/chat', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: q, top_k: 5})
+      });
+    }
+    selectedFiles = []; urlInput.value = ''; renderChips();
     if (!resp.ok) {
       let detail = '';
       try { detail = (await resp.text()).slice(0, 200); } catch(e) {}
@@ -124,19 +181,29 @@ async function ask() {
     }
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
-    let buf = '', full = '', coding;
-    let codeCard = null; // 密令卡片模式（D13）
+    let buf = '', full = '';
     function processBlock(part) {
       const dataLine = part.split('\n').find(l => l.startsWith('data:'));
       if (!dataLine) return;
       let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { return; }
       if (evt.sources) {
         sources = evt.sources;
-        node.innerHTML = '';
+        const loadingEl = node.querySelector('.loading');
+        if (loadingEl) loadingEl.remove();
       } else if (evt.delta) {
         full += evt.content;
         renderDelta(node, full);
         scroll();
+      } else if (evt.parsed) {
+        if (!attachRendered) {
+          attachRendered = true;
+          const boxAtt = document.createElement('div');
+          boxAtt.className = 'att-box';
+          boxAtt.innerHTML = '<b>已解析你的附件/链接</b><div class="excerpt"></div>';
+          boxAtt.querySelector('.excerpt').textContent =
+            (evt.parsed.parts||[]).map(p => `${p.title}：${p.excerpt||'（空文本）'}`).join('\n');
+          node.prepend(boxAtt);
+        }
       } else if (evt.error) {
         throw new Error(evt.message);
       }
@@ -146,37 +213,39 @@ async function ask() {
       if (done) break;
       buf += dec.decode(value, {stream: true});
       const parts = buf.split('\n\n');
-      buf = parts.pop();  // 尾部可能是不完整块，留到下次
+      buf = parts.pop();
       for (const part of parts) processBlock(part);
     }
-    if (buf.trim()) processBlock(buf);  // 处理流末尾残留（如无尾随空行的 done/error 块）
+    if (buf.trim()) processBlock(buf);
   } catch (e) {
     node.innerHTML = `<div class="err">⚠ ${e.message}</div>`;
     sendBtn.disabled = false; return;
   }
-  // 兜底：流正常结束但完全没有内容
   if (!(sources||[]).length && !full.trim()) {
     node.innerHTML = '<div class="err">⚠ 服务端未返回内容（知识库可能为空，或 Key 未配置）</div>';
+  } else if (!(sources||[]).length) {
+    const loadingEl = node.querySelector('.loading');
+    if (loadingEl) loadingEl.remove();
   }
-    if (!codeCard && (sources||[]).length) {
-      const isCodes = (sources||[]).some(s => (s.source||'').includes('密令库'));
-      const srcWrap = document.createElement('div');
-      srcWrap.className = 'sources';
-      (sources||[]).forEach(s => {
-        const span = document.createElement('span');
-        span.className = 'src';
-        span.textContent = (s.source || '密令库') + (s.score ? ` · ${Math.round(s.score*100)}%` : '');
-        srcWrap.appendChild(span);
-      });
-      node.appendChild(srcWrap);
-      if (isCodes) {  // 复制一行一条密令
-        const btn = document.createElement('button');
-        btn.className = 'copy-btn'; btn.textContent = '📋 复制全部密令';
-        btn.onclick = () => copyCodes(btn, waitCodes());
-        node.appendChild(btn);
-      }
+  if ((sources||[]).length) {
+    const isCodes = (sources||[]).some(s => (s.source||'').includes('密令库'));
+    const srcWrap = document.createElement('div');
+    srcWrap.className = 'sources';
+    (sources||[]).forEach(s => {
+      const span = document.createElement('span');
+      span.className = 'src';
+      span.textContent = (s.source || '密令库') + (s.score ? ` · ${Math.round(s.score*100)}%` : '');
+      srcWrap.appendChild(span);
+    });
+    node.appendChild(srcWrap);
+    if (isCodes) {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn'; btn.textContent = '📋 复制全部密令';
+      btn.onclick = () => copyCodes(btn, waitCodes());
+      node.appendChild(btn);
     }
-    sendBtn.disabled = false; scroll();
+  }
+  sendBtn.disabled = false; scroll();
 }
 sendBtn.onclick = ask;
 input.addEventListener('keydown', ev => { if (ev.key === 'Enter') ask(); });

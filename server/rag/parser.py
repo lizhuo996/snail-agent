@@ -17,8 +17,8 @@ SUPPORTED = {
 }
 
 
-def parse_path(path: str | Path) -> ParsedContent:
-    """按扩展名分发解析。图片 P2 走 vision/OCR，此处给出占位。"""
+def parse_path(path: str | Path, image_channel: str = "auto") -> ParsedContent:
+    """按扩展名分发解析。图片走 vision 双通道（vl/ocr）。"""
     p = Path(path)
     ext = p.suffix.lower()
     if ext not in SUPPORTED:
@@ -35,9 +35,12 @@ def parse_path(path: str | Path) -> ParsedContent:
         ".md": _parse_txt,
     }.get(ext)
 
-    if handler is None:  # 图片占位
-        log.warning("图片解析需 P2 视觉/OCR 通道: %s", p)
-        return ParsedContent(text="", source_type="image", title=p.stem, meta={"raw": str(p)})
+    if handler is None:  # 图片
+        from server.core import vision
+
+        text, channel = vision.read_image(p, channel=image_channel)
+        return ParsedContent(text=text, source_type="image", title=p.stem,
+                             meta={"image_channel": channel})
 
     content = handler(p)
     content.title = content.title or p.stem

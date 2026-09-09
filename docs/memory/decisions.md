@@ -104,3 +104,31 @@
   3. 密令问题回答返回 码+奖励+当前是否生效，比全文检索准且快；
   4. 管理后台提供 密令管理（新增/批量导入/停用/设有效期），密令仍可同时带「资料速查」标签入知识库，两条路径互不冲突；
   5. 数据模型 `server/core/models.py` 定义 `Code`（D13）。
+
+## D14 对话侧解析（P2 场景A）：「附件解析为纯文本并入上下文 + SSE parsed 事件」
+- 日期：2026-09-09
+- 背景：P2 要求聊天页能发图/发文档/贴链接后直接回答，且要"回显解析出的文本摘录"。
+- 决策：
+  1. 新增 `POST /api/chat-upload`（multipart：question + files + url + text），复用 `_stream` 问答流，不破坏现有 JSON `/api/chat`；
+  2. 解析结果统一 `ParsedContent`，以**文本形式**并入 user 上下文（标注"用户上传的补充材料，优先作为最新依据"），不单独建库；
+  3. 问答流新增 `parsed` SSE 事件，回显每个附件的标题与前 200 字摘录；
+  4. `POST /api/parse`（文件）、`POST /api/parse-url`（链接）独立成工具接口，管理后台/前端可复用；
+  5. 新增依赖 `python-multipart`（multipart 表单解析）。
+
+## D15 图片双通道实现：`vision.py` ImageReader 接口（qwen-vl + PaddleOCR）
+- 日期：2026-09-09
+- 背景：D9 定了"多模态 + 离线 OCR"双通道策略，P2 需落地为代码。
+- 决策：
+  1. `server/core/vision.py`：`ImageReader` 抽象 + `VLImageReader`（qwen-vl，OpenAI 兼容 image_url 传 base64 data URI）+ `PaddleImageReader`（PaddleOCR 可选依赖，延迟导入）；
+  2. 通道策略 `read_image(path, channel)`：`vl`/`ocr`/`auto`（有 Key 用多模，否则 OCR）；对话默认 auto，建库默认 ocr（`--image-channel` 可切）；
+  3. `parser.parse_path(..., image_channel=...)` 图片走 vision，产出 `ParsedContent(source_type="image")`；
+  4. `scripts/build_kb.py` 默认解析图片（`--no-images` 关闭），并支持 `--urls` 网页批量入库；
+  5. PaddleOCR 未装时抛"明确报错"提示安装 requirements-ocr.txt，不静默失败。
+
+## D16 rank-bm25 极小语料打分异常修复（min-max 归一化）
+- 日期：2026-09-09
+- 背景：rank-bm25 新版本在语料极小（尤其单文档）时 idf 为负，`score > 0` 过滤会把唯一/少量命中全部滤空，导致检索返回空。
+- 决策：
+  1. `_bm25_rank` 改为 min-max 归一化，把得分映射到 [0,1]，与向量分同量纲，负分也能正确排序；不再用 `>0` 过滤；
+  2. 单文档/全等分场景（bmax<=bmin）且确有词命中时，给唯一文档基准分 0.5 参与融合，避免搜索全空；
+  3. 融合侧直接使用归一化 b 加权（移除旧的 bmax 二次归一）。

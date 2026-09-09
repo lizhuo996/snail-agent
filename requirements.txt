@@ -2,6 +2,7 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 pydantic-settings>=2.4.0
+python-multipart>=0.0.9     # 聊天附件上传（P2 multipart form）
 
 # LLM + 向量（DashScope 走 OpenAI 兼容接口；多模态 qwen-vl 走同一接口）
 openai>=1.40.0
