@@ -37,6 +37,9 @@
   .codecard .row b { color:#d4e87e; }
   .codecard .row .ok { color:#7ee88a; }
   .codecard .row .exp { color:#ff8a8a; }
+  .codecard .copy { margin-top:8px; text-align:right; }
+  .codecard .copy button { background:#3c4612; color:#d4e87e; border:1px solid #6c7d2a; border-radius:8px; padding:4px 12px; font-size:11px; cursor:pointer; }
+  .codecard .copy button:hover { background:#4d5a18; }
   /* 快捷问题 */
   .quick { display:flex; gap:6px; padding:0 14px 8px; flex-wrap:wrap; }
   .quick span { font-size:11px; color:#ffca55; background:#2a2a14; border:1px solid #55521f; padding:4px 9px; border-radius:12px; }
@@ -51,7 +54,7 @@
   .typing { color:#7d8394; font-size:12px; }
   /* 滚动条 */
   .chat::-webkit-scrollbar { width:4px; } .chat::-webkit-scrollbar-thumb { background:#2e3342; }
-</style>
+  </style>
 </head>
 <body>
 <div class="phone">
@@ -108,6 +111,7 @@
           <div class="row"><span>独one无two</span><b>黑蝌蚪x3000</b><span class="ok">● 生效中</span></div>
           <div class="row"><span>卡拉永远OK</span><b>许愿币x3</b><span class="ok">● 生效中</span></div>
           <div class="row"><span>向左向右向前看</span><b>供奉加速x2h</b><span class="exp">○ 已过期</span></div>
+          <div class="copy"><button onclick="copyCodes(this)">📋 复制全部密令</button></div>
         </div>
         <br>共 36 条生效密令。需要某条密令的具体奖励可再问我。
       </div>
@@ -180,5 +184,35 @@
     </div>
   </div>
 </div>
+
+<script>
+/*
+ * 复制全部密令：从密令卡片中提取"生效中"的密令文本，一行一条（纯密令，不含奖励/状态）。
+ * 生产实现由 query_codes 返回生效列表后客户端拼 '\n' 调用 navigator.clipboard。
+ */
+function copyCodes(btn) {
+  var card = btn.closest('.codecard');
+  var lines = [];
+  card.querySelectorAll('.row').forEach(function (row) {
+    var status = row.querySelector('.ok');        // 仅"生效中"
+    var code = row.children[0].textContent.trim();
+    if (status && code) lines.push(code);
+  });
+  var text = lines.join('\n');
+  var done = function () { var old = btn.textContent; btn.textContent = '✔ 已复制 ' + lines.length + ' 条'; setTimeout(function(){ btn.textContent = old; }, 1500); };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done, function(){ legacyCopy(text, btn, done); });
+  } else {
+    legacyCopy(text, btn, done);
+  }
+}
+function legacyCopy(text, btn, done) {
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta); done();
+}
+</script>
 </body>
 </html>
