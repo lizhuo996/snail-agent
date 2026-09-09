@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密令管理后台</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",-apple-system,sans-serif; background:#101216; color:#e8eaf0; display:flex; min-height:100vh; }
+  .side { width:210px; background:#1d2029; border-right:1px solid #2a2d38; padding:18px 12px; flex-shrink:0; }
+  .side .logo { font-size:15px; color:#ffd76a; font-weight:600; padding:0 6px 14px; border-bottom:1px solid #2a2d38; margin-bottom:12px; }
+  .side a { display:block; padding:9px 12px; border-radius:8px; color:#b9bfca; text-decoration:none; font-size:13px; margin-bottom:4px; }
+  .side a.active { background:#2b5f4a; color:#fff; }
+  .side a small { color:#7d8394; display:block; font-size:11px; }
+  .main { flex:1; padding:24px 28px; }
+  .main h2 { font-size:20px; }
+  .main .sub { font-size:12px; color:#9aa0b0; margin:4px 0 20px; }
+  .cards { display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .stat { flex:1; min-width:140px; background:#1d2029; border:1px solid #2c303c; border-radius:12px; padding:14px 16px; }
+  .stat .num { font-size:24px; font-weight:700; color:#ffd76a; }
+  .stat .lab { font-size:12px; color:#9aa0b0; margin-top:4px; }
+  .toolbar { display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+  .btn { background:#2b5f4a; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; }
+  .btn.ghost { background:#262b36; color:#c9d2e2; border:1px solid #363c4e; }
+  .search { background:#10131a; border:1px solid #333a4c; border-radius:8px; padding:7px 12px; color:#fff; width:200px; font-size:13px; }
+  .filters { display:flex; gap:8px; margin-bottom:14px; }
+  .chip { font-size:12px; padding:4px 10px; border-radius:14px; border:1px solid #3a3f4d; color:#b9bfca; cursor:pointer; }
+  .chip.on { background:#ffd76a; border-color:#ffd76a; color:#241d02; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#9aa0b0; font-weight:600; padding:10px 12px; border-bottom:1px solid #2c303c; }
+  td { padding:12px; border-bottom:1px solid #23262f; }
+  td .code { color:#d4e87e; font-weight:600; font-family:Consolas,monospace; }
+  .st { font-size:11px; padding:2px 8px; border-radius:10px; }
+  .st.ok { background:#13301f; color:#7ee88a; }
+  .st.exp { background:#2a1414; color:#ff8a8a; }
+  .st.off { background:#262b36; color:#9aa0b0; }
+  .valid.exp { color:#ff8a8a; }
+  .rowbtns { font-size:12px; color:#8ab4ff; }
+  .rowbtns span { cursor:pointer; margin-right:8px; }
+  .rowbtns .del { color:#ff8a8a; }
+  .note { font-size:12px; color:#7d8394; margin-top:16px; }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="logo">🐌 攻略智能体 · 管理后台</div>
+  <a href="02-知识库管理后台.html">🗂 知识库管理<small>文档/标签/重建</small></a>
+  <a href="#" class="active">🔑 密令管理<small>兑换码维护</small></a>
+  <a href="04-模型与系统运维.html">⚙ 模型管理<small>LLM/Embedding</small></a>
+  <a href="04-模型与系统运维.html">🩺 系统运维<small>状态/日志/任务</small></a>
+</aside>
+
+<main class="main">
+  <h2>密令（兑换码）管理</h2>
+  <div class="sub">独立密令库，支撑玩家问密令时的精确查询（query_codes）。密令每周更新较频繁。</div>
+
+  <div class="cards">
+    <div class="stat"><div class="num">36</div><div class="lab">生效中</div></div>
+    <div class="stat"><div class="num">12</div><div class="lab">已过期</div></div>
+    <div class="stat"><div class="num">5</div><div class="lab">已停用</div></div>
+    <div class="stat"><div class="num">2026-09-08</div><div class="lab">最近更新</div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn">＋ 新增密令</button>
+    <button class="btn ghost">⬆ 批量导入</button>
+    <button class="btn ghost">⬇ 导出</button>
+    <input class="search" placeholder="按密令/奖励搜索…">
+  </div>
+
+  <div class="filters">
+    <span class="chip on">全部</span>
+    <span class="chip">生效中</span>
+    <span class="chip">已过期</span>
+    <span class="chip">已停用</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>密令</th><th>兑换奖励</th><th>状态</th><th>有效期</th><th>来源/批次</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="code">零帧起手</td>
+        <td>信物x20 + 抽奖券x5</td>
+        <td><span class="st ok">生效中</span></td>
+        <td>2026-09-30</td>
+        <td>2026-09 活动批</td>
+        <td class="rowbtns"><span>编辑</span><span>停用</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td class="code">独one无two</td>
+        <td>黑蝌蚪x3000</td>
+        <td><span class="st ok">生效中</span></td>
+        <td>长期</td>
+        <td>2026-09 活动批</td>
+        <td class="rowbtns"><span>编辑</span><span>停用</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td class="code">卡拉永远OK</td>
+        <td>许愿币x3</td>
+        <td><span class="st ok">生效中</span></td>
+        <td>2026-09-30</td>
+        <td>2026-09 活动批</td>
+        <td class="rowbtns"><span>编辑</span><span>停用</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td class="code">向左向右向前看</td>
+        <td>供奉加速x2h</td>
+        <td><span class="st exp">已过期</span></td>
+        <td class="valid exp">已过 2026-08-31</td>
+        <td>2026-08 活动批</td>
+        <td class="rowbtns"><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td class="code">邪恶栀子花</td>
+        <td>侦察券x10</td>
+        <td><span class="st off">已停用</span></td>
+        <td>—</td>
+        <td>人工停用（异常码）</td>
+        <td class="rowbtns"><span>编辑</span><span>恢复</span><span class="del">删除</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">玩家在聊天页问密令时，只返回「生效中」的条目；已过期/停用不展示，避免误导。批量导入支持 CSV（列：密令,奖励,有效期,来源）。</div>
+</main>
+</body>
+</html>

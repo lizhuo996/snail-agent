@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库管理后台</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",-apple-system,sans-serif; background:#101216; color:#e8eaf0; display:flex; min-height:100vh; }
+  /* 侧边导航 */
+  .side { width:210px; background:#1d2029; border-right:1px solid #2a2d38; padding:18px 12px; flex-shrink:0; }
+  .side .logo { font-size:15px; color:#ffd76a; font-weight:600; padding:0 6px 14px; border-bottom:1px solid #2a2d38; margin-bottom:12px; }
+  .side a { display:block; padding:9px 12px; border-radius:8px; color:#b9bfca; text-decoration:none; font-size:13px; margin-bottom:4px; }
+  .side a.active { background:#2b5f4a; color:#fff; }
+  .side a small { color:#7d8394; display:block; font-size:11px; }
+  /* 主区 */
+  .main { flex:1; padding:24px 28px; }
+  .main h2 { font-size:20px; margin-bottom:4px; }
+  .main .sub { font-size:12px; color:#9aa0b0; margin-bottom:20px; }
+  /* 统计卡片 */
+  .cards { display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .stat { flex:1; min-width:140px; background:#1d2029; border:1px solid #2c303c; border-radius:12px; padding:14px 16px; }
+  .stat .num { font-size:24px; font-weight:700; color:#ffd76a; }
+  .stat .lab { font-size:12px; color:#9aa0b0; margin-top:4px; }
+  /* 操作条 */
+  .toolbar { display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+  .btn { background:#2b5f4a; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; }
+  .btn.ghost { background:#262b36; color:#c9d2e2; border:1px solid #363c4e; }
+  .search { background:#10131a; border:1px solid #333a4c; border-radius:8px; padding:7px 12px; color:#fff; width:220px; font-size:13px; }
+  /* 表格 */
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#9aa0b0; font-weight:600; padding:10px 12px; border-bottom:1px solid #2c303c; }
+  td { padding:12px; border-bottom:1px solid #23262f; vertical-align:top; }
+  td .fname { color:#fff; font-weight:500; }
+  td .meta { color:#7d8394; font-size:11px; margin-top:2px; }
+  .tag { display:inline-block; font-size:11px; color:#8ab4ff; border:1px solid #3b4a66; border-radius:6px; padding:2px 8px; margin:2px 3px 2px 0; }
+  .tag + .add { color:#ffd76a; border-style:dashed; }
+  .status { font-size:11px; padding:2px 8px; border-radius:10px; }
+  .status.ok { background:#13301f; color:#7ee88a; }
+  .status.run { background:#2a2a14; color:#ffca55; }
+  .rowbtns { font-size:12px; color:#8ab4ff; }
+  .rowbtns span { cursor:pointer; margin-right:8px; }
+  .rowbtns .del { color:#ff8a8a; }
+  .note { font-size:12px; color:#7d8394; margin:16px 0 8px; }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="logo">🐌 攻略智能体 · 管理后台</div>
+  <a href="#" class="active">🗂 知识库管理<small>文档/标签/重建</small></a>
+  <a href="03-密令管理后台.html">🔑 密令管理<small>兑换码维护</small></a>
+  <a href="04-模型与系统运维.html">⚙ 模型管理<small>LLM/Embedding</small></a>
+  <a href="04-模型与系统运维.html">🩺 系统运维<small>状态/日志/任务</small></a>
+</aside>
+
+<main class="main">
+  <h2>知识库管理</h2>
+  <div class="sub">攻略材料统一入库，支持多标签，可触发重建索引。</div>
+
+  <div class="cards">
+    <div class="stat"><div class="num">128</div><div class="lab">文档数</div></div>
+    <div class="stat"><div class="num">1,280</div><div class="lab">知识块（Chunk）</div></div>
+    <div class="stat"><div class="num">36</div><div class="lab">密令（生效）</div></div>
+    <div class="stat"><div class="num">0.86</div><div class="lab">平均检索相似度</div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn">＋ 上传文档</button>
+    <button class="btn ghost">🔄 重建索引</button>
+    <button class="btn ghost">🏷 标签管理</button>
+    <input class="search" placeholder="搜索文档/标题…">
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>文档</th><th>来源类型</th><th>标签（多标签）</th><th>状态</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><div class="fname">萌新开荒攻略.md</div><div class="meta">128 块 · 更新 2026-09-02</div></td>
+        <td>文本</td>
+        <td><span class="tag">新手入门</span><span class="tag">系统解析</span><span class="tag add">＋</span></td>
+        <td><span class="status ok">已入库</span></td>
+        <td class="rowbtns"><span>检索测试</span><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td><div class="fname">周活动分析合集.pdf</div><div class="meta">96 块（含表格）· 更新 2026-09-05</div></td>
+        <td>PDF</td>
+        <td><span class="tag">周活动</span><span class="tag">进阶玩法</span><span class="tag add">＋</span></td>
+        <td><span class="status ok">已入库</span></td>
+        <td class="rowbtns"><span>检索测试</span><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td><div class="fname">各国家地图攻略（截图）.zip</div><div class="meta">142 块 · OCR 通道 · 更新 2026-09-06</div></td>
+        <td>图片</td>
+        <td><span class="tag">探索地图</span><span class="tag">资料速查</span><span class="tag add">＋</span></td>
+        <td><span class="status run">待重建</span></td>
+        <td class="rowbtns"><span>检索测试</span><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td><div class="fname">装备合成表.xlsx</div><div class="meta">34 块 · 3 个 sheet · 更新 2026-08-28</div></td>
+        <td>Excel</td>
+        <td><span class="tag">系统解析</span><span class="tag">资料速查</span><span class="tag add">＋</span></td>
+        <td><span class="status ok">已入库</span></td>
+        <td class="rowbtns"><span>检索测试</span><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+      <tr>
+        <td><div class="fname">抽奖周大作战网页快照.html</div><div class="meta">21 块 · 正文提取 · 更新 2026-09-07</div></td>
+        <td>网页</td>
+        <td><span class="tag">周活动</span><span class="tag">新手入门</span><span class="tag add">＋</span></td>
+        <td><span class="status ok">已入库</span></td>
+        <td class="rowbtns"><span>检索测试</span><span>编辑</span><span class="del">删除</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">标注「待重建」表示该文档已有新解析内容，点击「重建索引」后生效。知识原文存 knowledge/raw/（不入 git），此处只登记元数据。</div>
+</main>
+</body>
+</html>

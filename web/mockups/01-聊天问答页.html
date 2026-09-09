@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聊天问答页（手机端）</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",-apple-system,sans-serif; background:#101216; color:#e8eaf0; display:flex; justify-content:center; padding:24px 0; }
+  .phone { width:400px; height:780px; background:#171a22; border-radius:28px; border:2px solid #2c303c; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  /* 顶栏 */
+  .topbar { padding:12px 16px; background:#1d2029; border-bottom:1px solid #2a2d38; }
+  .topbar .title { font-size:15px; color:#ffd76a; font-weight:600; }
+  .topbar .sub { font-size:11px; color:#9aa0b0; margin-top:2px; }
+  /* 标签过滤（多选） */
+  .filter { display:flex; gap:6px; padding:10px 14px 6px; overflow-x:auto; border-bottom:1px solid #23262f; background:#191c24; }
+  .chip { flex:0 0 auto; font-size:12px; padding:4px 10px; border-radius:14px; border:1px solid #3a3f4d; color:#b9bfca; cursor:pointer; user-select:none; }
+  .chip.on { background:#ffd76a; border-color:#ffd76a; color:#241d02; font-weight:600; }
+  /* 对话区 */
+  .chat { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:14px; }
+  .bubble { max-width:100%; }
+  .me { align-self:flex-end; }
+  .ai { align-self:flex-start; width:100%; }
+  .bubble .who { font-size:11px; color:#7d8394; margin-bottom:4px; }
+  .bubble .box { font-size:14px; line-height:1.65; padding:10px 12px; border-radius:12px; }
+  .me .box { background:#2b5f4a; border-top-right-radius:2px; }
+  .ai .box { background:#232735; border:1px solid #2e3342; border-top-left-radius:2px; }
+  /* 元信息卡片：附件/来源/密令 */
+  .attach { display:flex; gap:8px; margin-bottom:6px; font-size:12px; }
+  .attach .f { background:#2a3a52; border:1px solid #3b5378; color:#cfe0ff; padding:6px 10px; border-radius:8px; display:flex; align-items:center; gap:6px; }
+  .attach .f small { color:#8fb5ff; }
+  .srcs { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
+  .src { font-size:11px; background:#202636; border:1px solid #363c4e; border-radius:8px; padding:4px 8px; color:#b8c4dd; }
+  .src b { color:#ffd76a; font-weight:600; }
+  .codecard { margin-top:8px; background:#20250f; border:1px solid #5c6b1f; border-radius:10px; padding:8px 10px; font-size:12px; }
+  .codecard .row { display:flex; justify-content:space-between; padding:3px 0; }
+  .codecard .row b { color:#d4e87e; }
+  .codecard .row .ok { color:#7ee88a; }
+  .codecard .row .exp { color:#ff8a8a; }
+  /* 快捷问题 */
+  .quick { display:flex; gap:6px; padding:0 14px 8px; flex-wrap:wrap; }
+  .quick span { font-size:11px; color:#ffca55; background:#2a2a14; border:1px solid #55521f; padding:4px 9px; border-radius:12px; }
+  /* 输入区 */
+  .inputbar { padding:10px 14px; background:#1d2029; border-top:1px solid #2a2d38; display:flex; flex-direction:column; gap:8px; }
+  .tools { display:flex; gap:8px; align-items:center; }
+  .tool { width:30px; height:30px; border-radius:8px; background:#262b36; border:1px solid #363c4e; color:#c9d2e2; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .attachinfo { font-size:11px; color:#8fb5ff; }
+  .inrow { display:flex; gap:8px; }
+  .inrow input { flex:1; background:#10131a; border:1px solid #333a4c; border-radius:18px; padding:8px 14px; color:#fff; font-size:13px; outline:none; }
+  .send { background:#ffd76a; color:#241d02; border:none; border-radius:18px; padding:0 16px; font-weight:600; font-size:13px; }
+  .typing { color:#7d8394; font-size:12px; }
+  /* 滚动条 */
+  .chat::-webkit-scrollbar { width:4px; } .chat::-webkit-scrollbar-thumb { background:#2e3342; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="topbar">
+    <div class="title">🐌 蜗牛助手</div>
+    <div class="sub">基于 128 篇攻略 · 1280 条知识块 · 密令 36 条生效中</div>
+  </div>
+
+  <div class="filter">
+    <span class="chip">全部</span>
+    <span class="chip on">新手入门</span>
+    <span class="chip">系统解析</span>
+    <span class="chip on">探索地图</span>
+    <span class="chip">周活动</span>
+    <span class="chip">密令速查</span>
+    <span class="chip">进阶玩法</span>
+  </div>
+
+  <div class="chat">
+    <!-- 用户问题1 -->
+    <div class="bubble me">
+      <div class="who">我</div>
+      <div class="box">新手前期刷哪个图收益最高？</div>
+    </div>
+    <!-- AI 回答1 + 来源 -->
+    <div class="bubble ai">
+      <div class="who">蜗牛助手 · 根据标签「新手入门」「探索地图」检索</div>
+      <div class="box">
+        前期推荐优先推 <b>高丽 → 扶桑</b>：高丽纯属新手过渡，扶桑开始<b>情报点收益明显提升</b>。
+        <br><br>要点：
+        <br>· 前期不必硬刷高丽，尽快推进解锁更多系统；
+        <br>· 扶桑开始留意「香」的积累（后期蝙蝠攻略用）；
+        <br>· 战力约 2000w 前不建议进波斯（收益平均时间低）。
+      </div>
+      <div class="srcs">
+        <span class="src">📄 萌新开荒攻略 <b>第3节</b></span>
+        <span class="src">📄 波斯入门建议 <b>第1节</b></span>
+        <span class="src">📄 探索地图收益表 <b>评分0.86</b></span>
+      </div>
+    </div>
+
+    <!-- 用户发密令问题 -->
+    <div class="bubble me">
+      <div class="who">我</div>
+      <div class="box">2025 最新密令有什么？</div>
+    </div>
+    <!-- AI 密令卡片（结构化查询） -->
+    <div class="bubble ai">
+      <div class="who">蜗牛助手 · 密令结构化查询 query_codes</div>
+      <div class="box">
+        以下是当前<b>生效中</b>的密令（来自密令速查库）：
+        <div class="codecard">
+          <div class="row"><span>零帧起手</span><b>信物x20 + 抽奖券x5</b><span class="ok">● 生效中</span></div>
+          <div class="row"><span>独one无two</span><b>黑蝌蚪x3000</b><span class="ok">● 生效中</span></div>
+          <div class="row"><span>卡拉永远OK</span><b>许愿币x3</b><span class="ok">● 生效中</span></div>
+          <div class="row"><span>向左向右向前看</span><b>供奉加速x2h</b><span class="exp">○ 已过期</span></div>
+        </div>
+        <br>共 36 条生效密令。需要某条密令的具体奖励可再问我。
+      </div>
+    </div>
+
+    <!-- 用户上传图片（多模态） -->
+    <div class="bubble me">
+      <div class="who">我</div>
+      <div class="attach">
+        <span class="f">🖼 贵重品截图.png <small>已解析</small></span>
+      </div>
+      <div class="box">这个贵重品怎么培养？</div>
+    </div>
+    <!-- AI 解析图片后回答 -->
+    <div class="bubble ai">
+      <div class="who">蜗牛助手 · 已看图片（qwen-vl 识别为「潘多拉魔盒·橙贵」）</div>
+      <div class="box">
+        图中是 <b>潘多拉魔盒</b>（橙色贵重品）。培养建议：
+        <br>· 优先升至 <b>觉醒</b>，解锁隐藏词条；
+        <br>· 材料优先用「突变抗原」留档，配合器官玩法抽取；
+        <br>· 五围侧重 <b>科技</b>，适合推图流。
+      </div>
+      <div class="srcs">
+        <span class="src">📄 贵重品玩法 <b>第2节</b></span>
+        <span class="src">🖼 您上传的图片 <b>OCR+视觉</b></span>
+      </div>
+    </div>
+
+    <!-- 网页链接解析 -->
+    <div class="bubble me">
+      <div class="who">我</div>
+      <div class="attach">
+        <span class="f">🔗 taptap.com/article/… <small>正文提取完成</small></span>
+      </div>
+      <div class="box">这篇攻略里推荐的抽奖周打法是什么？</div>
+    </div>
+    <div class="bubble ai">
+      <div class="who">蜗牛助手 · 已解析网页正文（42段）</div>
+      <div class="box">
+        根据您粘贴的网页：抽奖周建议<b>攒气球券到指定节点再连抽</b>，气球大作战优先兑换 <b>启示录</b> 奖励。
+      </div>
+      <div class="srcs">
+        <span class="src">🌐 taptap.com/article/… <b>网页</b></span>
+        <span class="src">📄 周活动分析 <b>第5节</b></span>
+      </div>
+    </div>
+
+    <div class="bubble ai">
+      <div class="typing">蜗牛助手正在输入…（SSE 流式）</div>
+    </div>
+  </div>
+
+  <div class="quick">
+    <span>💰 货币怎么获取</span>
+    <span>⚔ 装备合成顺序</span>
+    <span>🐉 神龙许愿套路</span>
+    <span>🗺 希域怎么玩</span>
+  </div>
+
+  <div class="inputbar">
+    <div class="tools">
+      <span class="tool">🖼</span>
+      <span class="tool">📄</span>
+      <span class="tool">🔗</span>
+      <span class="attachinfo">上传图片/文档、粘贴链接或直接输入文字</span>
+    </div>
+    <div class="inrow">
+      <input placeholder="例：本周抽奖周怎么打？">
+      <button class="send">发送</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

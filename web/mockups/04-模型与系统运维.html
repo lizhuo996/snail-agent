@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>模型管理 + 系统运维</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei",-apple-system,sans-serif; background:#101216; color:#e8eaf0; display:flex; min-height:100vh; }
+  .side { width:210px; background:#1d2029; border-right:1px solid #2a2d38; padding:18px 12px; flex-shrink:0; }
+  .side .logo { font-size:15px; color:#ffd76a; font-weight:600; padding:0 6px 14px; border-bottom:1px solid #2a2d38; margin-bottom:12px; }
+  .side a { display:block; padding:9px 12px; border-radius:8px; color:#b9bfca; text-decoration:none; font-size:13px; margin-bottom:4px; }
+  .side a.active { background:#2b5f4a; color:#fff; }
+  .side a small { color:#7d8394; display:block; font-size:11px; }
+  .main { flex:1; padding:24px 28px; max-width:860px; }
+  h2 { font-size:20px; }
+  .sub { font-size:12px; color:#9aa0b0; margin:4px 0 20px; }
+
+  .card { background:#1d2029; border:1px solid #2c303c; border-radius:12px; padding:18px; margin-bottom:18px; }
+  .card h3 { font-size:15px; color:#ffd76a; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.ok { background:#7ee88a; } .dot.warn { background:#ffca55; } .dot.down { background:#ff8a8a; }
+
+  .formrow { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .formrow label { width:130px; color:#b9bfca; font-size:13px; flex-shrink:0; }
+  .formrow input, .formrow select { flex:1; background:#10131a; border:1px solid #333a4c; border-radius:8px; padding:8px 12px; color:#fff; font-size:13px; }
+  .formrow .hint { color:#7d8394; font-size:11px; width:150px; }
+
+  .health { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .hc { background:#232735; border:1px solid #2e3342; border-radius:10px; padding:12px; }
+  .hc .name { font-size:12px; color:#9aa0b0; }
+  .hc .val { font-size:18px; font-weight:700; margin-top:6px; display:flex; align-items:center; gap:7px; }
+  .hc .val.ok { color:#7ee88a; } .hc .val.warn { color:#ffca55; } .hc .val.down { color:#ff8a8a; }
+  .hc .detail { font-size:11px; color:#7d8394; margin-top:4px; }
+
+  .btns { display:flex; gap:8px; margin-top:14px; }
+  .btn { background:#2b5f4a; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer; }
+  .btn.ghost { background:#262b36; color:#c9d2e2; border:1px solid #363c4e; }
+  .btn.warn { background:#6b4a17; color:#ffca55; }
+
+  .status table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:10px; }
+  .status th { text-align:left; color:#9aa0b0; font-weight:600; padding:8px 10px; border-bottom:1px solid #2c303c; }
+  .status td { padding:10px; border-bottom:1px solid #23262f; }
+  .st { font-size:11px; padding:2px 8px; border-radius:10px; }
+  .st.run { background:#2a2a14; color:#ffca55; }
+  .st.done { background:#13301f; color:#7ee88a; }
+  .st.fail { background:#2a1414; color:#ff8a8a; }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="logo">🐌 攻略智能体 · 管理后台</div>
+  <a href="02-知识库管理后台.html">🗂 知识库管理</a>
+  <a href="03-密令管理后台.html">🔑 密令管理</a>
+  <a href="#" class="active">⚙ 模型管理<small>LLM/Embedding/多模态</small></a>
+  <a href="#" class="active">🩺 系统运维<small>状态/日志/任务</small></a>
+</aside>
+
+<main class="main">
+  <h2>模型管理</h2>
+  <div class="sub">配置项持久化到本地 SQLite，运行时生效，重启保留；Key 只存本地不进仓库。</div>
+
+  <div class="card">
+    <h3><span class="dot ok"></span> 大模型 LLM</h3>
+    <div class="formrow"><label>Base URL</label><input value="https://dashscope.aliyuncs.com/compatible-mode/v1"><span class="hint"></span></div>
+    <div class="formrow"><label>模型名</label><input value="qwen-plus"><span class="hint">覆盖时改为 qwen-max 等</span></div>
+    <div class="formrow"><label>API Key</label><input value="••••••••••••abcd" type="password"><span class="hint"><span class="dot ok"></span> 已配置</span></div>
+    <div class="btns"><button class="btn">保存</button><button class="btn ghost">测试对话</button></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot ok"></span> 向量化 Embedding</h3>
+    <div class="formrow"><label>模型名</label><input value="text-embedding-v3"><span class="hint">维度 1024</span></div>
+    <div class="formrow"><label>批量大小</label><input value="10"><span class="hint"></span></div>
+    <div class="btns"><button class="btn">保存</button></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="dot ok"></span> 多模态视觉（图片解析）</h3>
+    <div class="formrow"><label>视觉模型</label><input value="qwen-vl-max"><span class="hint">对话看图的通道</span></div>
+    <div class="formrow"><label>离线 OCR</label><select><option>暂未启用（建议安装 requirements-ocr.txt）</option><option>使用 PaddleOCR</option></select></div>
+    <div class="btns"><button class="btn">保存</button><button class="btn ghost">测试识图</button></div>
+  </div>
+
+  <h2 style="margin-top:6px;">系统运维</h2>
+  <div class="sub">服务健康、解析/OCR 任务状态与最近日志。</div>
+
+  <div class="card">
+    <h3>服务健康（/api/health）</h3>
+    <div class="health">
+      <div class="hc"><div class="name">Service</div><div class="val ok"><span class="dot ok"></span> up</div><div class="detail">FastAPI v0.1</div></div>
+      <div class="hc"><div class="name">LLM</div><div class="val ok"><span class="dot ok"></span> 就绪</div><div class="detail">qwen-plus · Key 已配</div></div>
+      <div class="hc"><div class="name">Embedding</div><div class="val ok"><span class="dot ok"></span> 就绪</div><div class="detail">text-embedding-v3</div></div>
+      <div class="hc"><div class="name">视觉</div><div class="val warn"><span class="dot warn"></span> 降级</div><div class="detail">离线 OCR 未装</div></div>
+      <div class="hc"><div class="name">知识库</div><div class="val ok"><span class="dot ok"></span> 1,280 块</div><div class="detail">SQLite 正常</div></div>
+    </div>
+  </div>
+
+  <div class="card status">
+    <h3>解析 / OCR 任务</h3>
+    <table>
+      <thead><tr><th>任务</th><th>类型</th><th>进度</th><th>状态</th><th>开始时间</th></tr></thead>
+      <tbody>
+        <tr><td>各国家地图攻略.zip 入库</td><td>图片·OCR</td><td>142/142 块</td><td><span class="st done">完成</span></td><td>2026-09-06 10:12</td></tr>
+        <tr><td>周活动分析合集.pdf 入库</td><td>PDF·表格</td><td>96/96 块</td><td><span class="st done">完成</span></td><td>2026-09-05 09:40</td></tr>
+        <tr><td>大作战网页快照.html 抓取</td><td>网页</td><td>21/21 段</td><td><span class="st done">完成</span></td><td>2026-09-07 15:03</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>最近日志</h3>
+    <div style="font-family:Consolas,monospace;font-size:11px;color:#9aa0b0;line-height:1.8;">
+      14:02:08 [INFO ] kb.search recall 8 hits · tags=[新手入门,探索地图] · took 34ms<br>
+      14:02:09 [INFO ] chat.qwen-plus stream done · tokens=412<br>
+      14:05:11 [INFO ] vision.qwen-vl recognized: 潘多拉魔盒·橙贵<br>
+      14:06:00 [WARN ] kb.rebuild image channel: PaddleOCR not installed, fallback multimodal<br>
+      14:08:47 [INFO ] codes.query_codes hit 3 active codes
+    </div>
+  </div>
+
+  <div class="btns"><button class="btn ghost">刷新</button><button class="btn warn">下载日志</button></div>
+</main>
+</body>
+</html>

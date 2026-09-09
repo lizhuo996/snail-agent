@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最强蜗牛攻略智能体 · UI 效果图</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Microsoft YaHei", -apple-system, sans-serif; background:#14161c; color:#e8eaf0; min-height:100vh; }
+  header { padding:28px 32px; border-bottom:1px solid #2a2d38; }
+  header h1 { font-size:22px; color:#ffd76a; }
+  header p { margin-top:6px; color:#9aa0b0; font-size:13px; }
+  main { padding:28px 32px; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
+  .card { background:#1d2028; border:1px solid #2c303c; border-radius:12px; overflow:hidden; transition:.18s; }
+  .card:hover { transform:translateY(-3px); border-color:#ffd76a; }
+  .card a { text-decoration:none; color:inherit; display:block; }
+  .thumb { height:150px; display:flex; align-items:center; justify-content:center; font-size:40px; background:linear-gradient(145deg,#232735,#171a22); }
+  .thumb.chat { background:linear-gradient(145deg,#232735,#3a2f16); }
+  .thumb.admin { background:linear-gradient(145deg,#232735,#15312e); }
+  .card h2 { font-size:16px; padding:14px 16px 4px; color:#ffd76a; }
+  .card p { font-size:12px; padding:0 16px 14px; color:#9aa0b0; line-height:1.6; }
+  .tag { display:inline-block; font-size:10px; color:#8ab4ff; border:1px solid #3b4a66; border-radius:6px; padding:1px 6px; margin:0 4px 4px 0; }
+  footer { padding:18px 32px; color:#555b68; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>最强蜗牛攻略智能体 · UI 效果图</h1>
+  <p>对应已确认功能：RAG 智能问答 + 多标签过滤 + 多模态解析（图片/文档/网页/文本）+ 密令结构化查询 + 管理后台。点击卡片直达对应页面。</p>
+</header>
+<main>
+  <div class="card">
+    <a href="01-聊天问答页.html">
+      <div class="thumb chat">💬</div>
+      <h2>聊天问答页（手机端）</h2>
+      <p>玩家主界面：多标签过滤、上传图片/文档、粘贴网页链接/文本、来源引用、密令卡片展示、SSE 流式回答。</p>
+      <span class="tag">P1 核心</span><span class="tag">P2 多模态</span><span class="tag">密令</span>
+    </a>
+  </div>
+  <div class="card">
+    <a href="02-知识库管理后台.html">
+      <div class="thumb admin">🗂</div>
+      <h2>知识库管理后台</h2>
+      <p>管理员视角：文档上传/列表/统计、多标签维护（给条目打多个标签）、触发重建索引、检索测试。</p>
+      <span class="tag">P1+</span><span class="tag">标签管理</span>
+    </a>
+  </div>
+  <div class="card">
+    <a href="03-密令管理后台.html">
+      <div class="thumb admin">🔑</div>
+      <h2>密令管理后台</h2>
+      <p>密令（兑换码）独立管理：列表/新增/批量导入/停用/设有效期，支撑 query_codes 精确查询。</p>
+      <span class="tag">P3</span><span class="tag">结构化</span>
+    </a>
+  </div>
+  <div class="card">
+    <a href="04-模型与系统运维.html">
+      <div class="thumb admin">⚙</div>
+      <h2>模型管理 + 系统运维</h2>
+      <p>LLM/Embedding/多模态配置（base_url、模型、Key 状态检测、测试对话）、服务健康卡片、解析/OCR 任务状态。</p>
+      <span class="tag">M0</span><span class="tag">运维</span>
+    </a>
+  </div>
+</main>
+<footer>效果图为高保真原型，用于界面评审与开发参考；最终实现以技术设计为准。</footer>
+</body>
+</html>
