@@ -2,6 +2,21 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（修复密令"一直思考中"）
+
+**问题**：用户发密令后页面一直"思考中"。
+**排查**：后端三类密令场景实测均正常（具体码 0s 命中、库外码 7.5s RAG、泛指 0s 列全部）→ 确定为前端两处：
+1. **结构性 bug**：SSE `sources` 事件的 data 是裸数组（`_sse("sources", [...])`），前端 `if (evt.sources)` 永远不成立，来源分支永不执行；且旧版页面是 `startsWith('data:')` bug 的缓存 JS，所有事件都不解析 → 一直"思考中"
+2. 页面缓存：StaticFiles 默认无 cache 头，浏览器缓存旧 JS；旧版 JS 的 `startsWith('data:')` 解析 bug 一直命中
+**修复**：
+- `web/index.html`：`processBlock` 用 `Array.isArray(evt)` 识别 sources 事件（兼容裸数组 data）
+- `main.py`：`_NoCachePages` 中间件给 `/`、`/index.html`、`/admin` 加 `Cache-Control: no-store`（StaticFiles headers 参数当前 starlette 版本不支持，改中间件）
+- 验证：页面响应头 no-store、新版 JS 已含 Array.isArray 判断、密令 SSE 全事件正常、30 pytest 全过
+
+**下一步**
+- [ ] 用户刷新页面（Ctrl+F5）后重新发密令确认
+- [ ] 其余同前（补充真实攻略 / QQ 渠道）
+
 ## 2026-09-09 | 开发机（真实 Boss 表入库 + clear 误删密令修复）
 
 **完成**

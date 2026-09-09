@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from server.api import routes_admin, routes_chat, routes_upload
 from server.core.config import settings, BASE_DIR
@@ -55,3 +56,16 @@ def health():
 _web_dir = BASE_DIR / "web"
 if _web_dir.exists():
     app.mount("/", StaticFiles(directory=str(_web_dir), html=True), name="web")
+
+
+# no-cache：聊天页 JS 迭代快，杜绝浏览器缓存旧版导致 SSE 解析异常
+class _NoCachePages(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        resp = await call_next(request)
+        if request.url.path in ("/", "/index.html", "/admin", "/admin/index.html"):
+            resp.headers["Cache-Control"] = "no-store"
+            resp.headers["Pragma"] = "no-cache"
+        return resp
+
+
+app.add_middleware(_NoCachePages)

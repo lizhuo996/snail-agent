@@ -186,8 +186,9 @@ async function ask() {
       const dataLine = part.split('\n').find(l => l.startsWith('data:'));
       if (!dataLine) return;
       let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { return; }
-      if (evt.sources) {
-        sources = evt.sources;
+      if (Array.isArray(evt)) {
+        // sources 事件：data 为裸数组（[{source,clause,...}]）
+        sources = evt;
         const loadingEl = node.querySelector('.loading');
         if (loadingEl) loadingEl.remove();
       } else if (evt.delta) {
