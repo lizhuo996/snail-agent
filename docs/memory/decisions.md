@@ -73,3 +73,13 @@
   - 网页：httpx 抓取 + BeautifulSoup 提取正文（去导航/广告）；
   - PDF：pymupdf + pdfplumber；Word：python-docx；Excel：openpyxl/pandas（含多 sheet）；PPT：python-pptx；纯文本：直接；
   - 新增依赖：httpx、pandas、python-pptx（openpyxl、beautifulsoup4 已在要求中），写入 requirements.txt；PaddleOCR 单独 requirements-ocr.txt（D9）。
+
+## D11 分阶段演进规划 P0→P3（设计评审结论）
+- 日期：2026-09-08
+- 背景：设计阶段需要把开发拆成可演示的里程碑，遵循"阶段渐进、每阶段留口子、成果可见"原则。
+- 决策（详见 `docs/design/技术路线与详细设计_v0.1.md`）：
+  1. P0 地基：服务骨架 + `/api/health` + 离线测试；
+  2. P1 知识库 + RAG 问答（第一个可见成果）：建库脚本 + 检索混检 + SSE 问答 + 引用来源；
+  3. P2 多模态/文档解析：对话直接解析（上传/链接/文本）+ 建库批量解析，图片多模 + 离线 OCR 双通道；
+  4. P3 管理后台 + 增强：/admin（知识库管理/系统运维/模型管理）+ 分类过滤 + 结构化速查；
+  5. 统一数据模型（Document/Chunk/ParsedContent 在 server/core/models.py）；parser/ImageReader/SqliteStore/ToolRegistry 预留扩展口子。
