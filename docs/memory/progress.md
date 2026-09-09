@@ -2,6 +2,20 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（密钥单独存放）
+
+**完成（Key 单独存放）**
+- 用户选定方案：DashScope API Key 单独放 `secrets/dashscope.key`（独立密钥文件，.env 保持不变）
+- `server/core/config.py` 支持密钥优先级：secrets/dashscope.key > .env 的 DASHSCOPE_API_KEY，读取用 utf-8-sig 兼容 BOM
+- `.gitignore` 新增 `secrets/*`（仅放行 `dashscope.key.example` 模板可提交）
+- 模板 `secrets/dashscope.key.example` 已提交；真 key 文件 gitignore，本机文件为占位 `sk-paste-your-key-here`
+- 新增测试 `test_secrets_key_file_priority`（19 个 pytest 全过）
+
+**下一步**
+- [ ] 在 `D:\Work\project\agent\snail-agent\secrets\dashscope.key` 填入真实 Key（阿里云百炼平台获取）
+- [ ] 跑 `scripts/build_kb.py` 建真实攻略库 + 实测 RAG 问答质量
+- [ ] 进 P2：图片/多模态解析、QQ 聊天渠道对接
+
 ## 2026-09-09 | 开发机（③开发 P0+P1 骨架）
 
 **完成（P0 地基 + P1 核心骨架，全部离线测试通过）**

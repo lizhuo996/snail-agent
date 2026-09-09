@@ -44,3 +44,16 @@ def test_codes_empty(client):
     r = client.get("/api/codes")
     assert r.status_code == 200
     assert r.json() == {"codes": []}
+
+
+def test_secrets_key_file_priority(tmp_path, monkeypatch):
+    """单独 key 文件优先级高于 .env（本机无 .env/占位 key 时应读到占位值）。"""
+    from server.core import config as cfg
+
+    key_file = tmp_path / "dashscope.key"
+    key_file.write_text("sk-from-secrets-file", encoding="utf-8")
+    monkeypatch.setattr(cfg, "SECRETS_KEY_FILE", key_file)
+
+    # 重新实例化 Settings，验证 file 覆盖 .env（此处 .env 不存在 → 空，应取 file）
+    s = cfg.Settings(dashscope_api_key="")
+    assert s.dashscope_api_key == "sk-from-secrets-file"
