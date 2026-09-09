@@ -117,38 +117,47 @@ async function ask() {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({question: q, top_k: 5})
     });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.ok) {
+      let detail = '';
+      try { detail = (await resp.text()).slice(0, 200); } catch(e) {}
+      throw new Error('HTTP ' + resp.status + (detail ? ' · ' + detail : ''));
+    }
     const reader = resp.body.getReader();
     const dec = new TextDecoder();
-    let buf = '', full = '';
+    let buf = '', full = '', coding;
     let codeCard = null; // 密令卡片模式（D13）
+    function processBlock(part) {
+      const dataLine = part.split('\n').find(l => l.startsWith('data:'));
+      if (!dataLine) return;
+      let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { return; }
+      if (evt.sources) {
+        sources = evt.sources;
+        node.innerHTML = '';
+      } else if (evt.delta) {
+        full += evt.content;
+        renderDelta(node, full);
+        scroll();
+      } else if (evt.error) {
+        throw new Error(evt.message);
+      }
+    }
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
       buf += dec.decode(value, {stream: true});
       const parts = buf.split('\n\n');
-      buf = parts.pop();
-      for (const part of parts) {
-        // SSE 块含 event:+data: 两行，取 data: 行解析（不能以整块 startsWith，块首是 event:）
-        const dataLine = part.split('\n').find(l => l.startsWith('data:'));
-        if (!dataLine) continue;
-        let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { continue; }
-        if (evt.sources) {
-          sources = evt.sources;
-          node.innerHTML = '';
-        } else if (evt.delta) {
-          full += evt.content;
-          renderDelta(node, full);
-          scroll();
-        } else if (evt.error) {
-          node.innerHTML = `<div class="err">⚠ ${evt.error}</div>`;
-        }
-      }
+      buf = parts.pop();  // 尾部可能是不完整块，留到下次
+      for (const part of parts) processBlock(part);
     }
-    // rener sources / 密令复制按钮
-    if (!(sources||[]).length && !full.trim()) {
-      node.innerHTML = '<div class="err">⚠ 服务端未返回内容（知识库可能为空，或 Key 未配置）</div>';
-    }
+    if (buf.trim()) processBlock(buf);  // 处理流末尾残留（如无尾随空行的 done/error 块）
+  } catch (e) {
+    node.innerHTML = `<div class="err">⚠ ${e.message}</div>`;
+    sendBtn.disabled = false; return;
+  }
+  // 兜底：流正常结束但完全没有内容
+  if (!(sources||[]).length && !full.trim()) {
+    node.innerHTML = '<div class="err">⚠ 服务端未返回内容（知识库可能为空，或 Key 未配置）</div>';
+  }
     if (!codeCard && (sources||[]).length) {
       const isCodes = (sources||[]).some(s => (s.source||'').includes('密令库'));
       const srcWrap = document.createElement('div');
@@ -167,11 +176,7 @@ async function ask() {
         node.appendChild(btn);
       }
     }
-  } catch (e) {
-    node.innerHTML = `<div class="err">⚠ ${e.message}</div>`;
-  } finally {
     sendBtn.disabled = false; scroll();
-  }
 }
 sendBtn.onclick = ask;
 input.addEventListener('keydown', ev => { if (ev.key === 'Enter') ask(); });
