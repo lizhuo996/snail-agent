@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最强蜗牛攻略后台</title>
+<style>
+  :root { --bg:#0f1117; --panel:#1a1e29; --panel2:#222838; --line:#2e3342; --text:#e8eaf0; --muted:#9aa3b5; --accent:#4c8dff; --ok:#2ecc71; --warn:#f39c12; --err:#ff6b6b; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Microsoft YaHei",sans-serif; }
+  header { padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:18px; }
+  nav { display:flex; gap:6px; margin-left:auto; }
+  nav button { background:none; border:none; color:var(--muted); padding:8px 14px; cursor:pointer; border-radius:8px; font-size:14px; }
+  nav button.active { background:var(--accent); color:#fff; }
+  main { padding:20px 24px; max-width:1100px; margin:0 auto; }
+  .page { display:none; } .page.active { display:block; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:16px; }
+  .card h2 { font-size:15px; margin-bottom:12px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:normal; }
+  td code { color:#82aaff; }
+  input,select,textarea { background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; }
+  textarea { width:100%; resize:vertical; font-family:inherit; }
+  button { background:var(--accent); border:none; color:#fff; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+  button.ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--line); }
+  button.danger { background:transparent; color:var(--err); border:1px solid var(--err); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .stat { display:inline-flex; flex-direction:column; background:var(--panel2); padding:10px 16px; border-radius:10px; margin-right:10px; }
+  .stat b { font-size:20px; color:var(--accent); }
+  .stat span { color:var(--muted); font-size:12px; margin-top:2px; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .err { color:var(--err); } .muted { color:var(--muted); }
+  .tag { display:inline-block; background:#2b3a67; color:#a8c0ff; border-radius:8px; padding:2px 8px; font-size:12px; margin:2px; }
+  .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .log { background:#0a0d13; border:1px solid var(--line); border-radius:8px; padding:10px; font-family:Consolas,monospace; font-size:12px; white-space:pre-wrap; color:#9ddc8e; max-height:260px; overflow:auto; }
+  .badge { padding:2px 8px; border-radius:8px; font-size:12px; }
+  .badge.on { background:#143b25; color:#2ecc71; } .badge.off { background:#3b2414; color:#f39c12; } .badge.exp { background:#3b1414; color:#ff6b6b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐌 最强蜗牛攻略后台</h1>
+  <nav>
+    <button data-p="kb" class="active">知识库</button>
+    <button data-p="codes">密令</button>
+    <button data-p="ops">运维</button>
+    <button data-p="model">模型</button>
+  </nav>
+</header>
+
+<main id="kb" class="page active">
+  <div class="card">
+    <h2>知识库概览</h2>
+    <div id="kb-stats"></div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="rebuild()">🔄 触发全量重建</button>
+      <button class="ghost" onclick="loadDocs()">刷新</button>
+      <span class="muted" id="kb-tip"></span>
+    </div>
+    <div class="log" id="rebuild-log" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <h2>文档列表（点击行查看分块）</h2>
+    <div class="toolbar">
+      <span class="muted">分类标签总览</span>
+      <select id="doc-filter" onchange="loadDocs()"><option value="">全部文档</option></select>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>标题</th><th>类型</th><th>创建时间</th><th>分块</th><th>操作</th></tr></thead>
+      <tbody id="doc-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="chunks-card" style="display:none">
+    <h2 id="chunks-title">分块</h2>
+    <div id="chunk-list"></div>
+  </div>
+</main>
+
+<main id="codes" class="page">
+  <div class="card">
+    <h2>密令维护</h2>
+    <div class="row">
+      <input id="code-text" placeholder="密令文本">
+      <input id="code-reward" placeholder="奖励（如：信物x20）" style="width:180px">
+      <select id="code-status"><option value="生效">生效</option><option value="停用">停用</option><option value="已过期">已过期</option></select>
+      <input id="code-until" placeholder="有效期 如2026-12-31" style="width:150px">
+      <button onclick="addCode()">新增</button>
+    </div>
+    <details style="margin:10px 0">
+      <summary class="muted" style="cursor:pointer">📄 批量导入（每行一条：密令|奖励|状态|有效期）</summary>
+      <textarea id="batch-area" rows="5" placeholder="零帧起手|信物x20|生效|2026-12-31&#10;独one无two|黑蝌蚪x3000"></textarea>
+      <button onclick="batchImport()">导入</button> <span class="muted" id="batch-msg"></span>
+    </details>
+    <table>
+      <thead><tr><th>ID</th><th>密令</th><th>奖励</th><th>状态</th><th>有效期</th><th>批次</th><th>操作</th></tr></thead>
+      <tbody id="code-body"></tbody>
+    </table>
+  </div>
+</main>
+
+<main id="ops" class="page">
+  <div class="card" id="health-card"><h2>系统状态</h2><div id="health-body">加载中…</div></div>
+  <div class="card"><h2>聊天页检索测试</h2>
+    <div class="row">
+      <input id="sq" placeholder="输入查询，如：英伦地图怎么玩" style="width:320px">
+      <input id="stags" placeholder="标签过滤，逗号分隔（可空）" style="width:220px">
+      <button onclick="searchTest()">测试检索</button>
+    </div>
+    <div id="search-result" class="log" style="max-height:200px"></div>
+  </div>
+</main>
+
+<main id="model" class="page">
+  <div class="card"><h2>模型配置（只读，修改请编辑 .env 后重启）</h2><pre id="model-body" style="white-space:pre-wrap"></pre></div>
+  <div class="card"><h2>测试对话</h2>
+    <div class="row"><input id="tp" placeholder="输入提示词" style="width:320px" value="用一句话介绍最强蜗牛"><button onclick="llmTest()">测试</button></div>
+    <div id="llm-reply" class="log"></div>
+  </div>
+</main>
+
+<script>
+let currentDocId = null;
+
+// ---------- tab ----------
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById(b.dataset.p).classList.add('active');
+});
+
+async function api(path, opts) {
+  const r = await fetch('/api/admin' + path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || ('HTTP ' + r.status));
+  return j;
+}
+
+// ---------- 知识库 ----------
+async function loadStats() {
+  try {
+    const s = await api('/kb/stats');
+    document.getElementById('kb-stats').innerHTML =
+      `<span class="stat"><b>${s.documents}</b><span>文档</span></span>
+       <span class="stat"><b>${s.chunks}</b><span>分块</span></span>
+       <span class="stat"><b>${s.codes}</b><span>密令</span></span>
+       <span class="stat"><b>${s.exists ? '有' : '空'}</b><span>建库状态</span></span>`;
+  } catch (e) { document.getElementById('kb-stats').textContent = '加载失败：' + e.message; }
+}
+
+async function loadDocs() {
+  currentDocId = null;
+  document.getElementById('chunks-card').style.display = 'none';
+  try {
+    const {documents} = await api('/kb/docs');
+    loadTags();
+    const filter = document.getElementById('doc-filter').value;
+    const rows = documents.filter(d => !filter || d.source_type === filter)
+      .map(d => `<tr>
+        <td>${d.id}</td><td>${d.title}</td><td>${d.source_type}</td>
+        <td class="muted">${(d.created_at||'').slice(0,16)}</td><td>${d.chunk_count}</td>
+        <td>
+          <button class="ghost" onclick="viewChunks(${d.id},'${d.title}')">查看分块</button>
+          <button class="danger" onclick="delDoc(${d.id})">删除</button>
+        </td></tr>`).join('');
+    document.getElementById('doc-body').innerHTML = rows || '<tr><td colspan="6" class="muted">暂无文档，请先运行 scripts/build_kb.py</td></tr>';
+  } catch (e) { document.getElementById('doc-body').innerHTML = `<tr><td colspan="6" class="err">${e.message}</td></tr>`; }
+}
+
+async function loadTags() {
+  try {
+    const {tags} = await api('/kb/tags');
+    const sel = document.getElementById('doc-filter');
+    sel.innerHTML = '<option value="">全部文档</option>' +
+      tags.map(t => `<option>${t.tag}</option>`).join('');
+  } catch (e) {}
+}
+
+async function viewChunks(id, title) {
+  currentDocId = id;
+  const card = document.getElementById('chunks-card');
+  card.style.display = 'block';
+  document.getElementById('chunks-title').textContent = `共分块 · ${title}`;
+  const {tags} = await api('/kb/tags');
+  const tagOpts = tags.map(t => `<option>${t.tag}</option>`).join('');
+  const {chunks} = await api('/kb/chunks?doc_id=' + id);
+  document.getElementById('chunk-list').innerHTML = chunks.map(c =>
+    `<div class="card" style="margin-bottom:8px">
+       <div class="muted" style="font-size:12px">#${c.id} ${c.page ? '第'+c.page+'部分' : ''}</div>
+       <div>${c.text.slice(0, 160)}${c.text.length>160?'…':''}</div>
+       <div class="row" style="margin-top:6px">
+         ${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}
+         <select id="tag-sel-${c.id}">${tagOpts}</select>
+         <button class="ghost" onclick="setChunkTag(${c.id})">加标签</button>
+       </div>
+     </div>`).join('') || '<span class="muted">无分块</span>';
+}
+
+async function setChunkTag(id) {
+  const t = document.getElementById('tag-sel-' + id).value;
+  if (!t) return;
+  const {chunks} = await api('/kb/chunks?doc_id=' + currentDocId);
+  const cur = chunks.find(c => c.id === id);
+  const tags = cur && cur.tags ? cur.tags.concat([t]) : [t];
+  await api('/kb/chunks/' + id + '/tags', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tags})});
+  viewChunks(currentDocId, document.getElementById('chunks-title').textContent);
+}
+
+async function delDoc(id) {
+  if (!confirm('删除文档 #' + id + '（含其分块）？')) return;
+  await api('/kb/docs/' + id, {method:'DELETE'});
+  loadStats(); loadDocs();
+}
+
+async function rebuild() {
+  const logEl = document.getElementById('rebuild-log');
+  logEl.style.display = 'block'; logEl.textContent = '正在重建…（可能需要几分钟）';
+  document.getElementById('kb-tip').textContent = '';
+  try {
+    const r = await api('/kb/rebuild', {method:'POST'});
+    logEl.textContent = '✅ 重建完成\n' + (r.log||[]).join('\n');
+    loadStats(); loadDocs();
+  } catch (e) {
+    logEl.textContent = '❌ ' + e.message;
+  }
+}
+
+// ---------- 密令 ----------
+async function loadCodes() {
+  const {codes} = await api('/codes?status=');
+  document.getElementById('code-body').innerHTML = codes.map(c =>
+    `<tr>
+      <td>${c.id}</td><td><code>${c.text}</code></td>
+      <td>${c.reward || '<span class="muted">待补充</span>'}</td>
+      <td><span class="badge ${c.status==='生效'?'on':c.status==='停用'?'off':'exp'}">${c.status}</span></td>
+      <td class="muted">${c.valid_until || '—'}</td><td class="muted">${c.batch || ''}</td>
+      <td>
+        <button class="ghost" onclick="setCodeStatus(${c.id},'${c.status==='生效'?'停用':'生效'}')">${c.status==='生效'?'停用':'启用'}</button>
+        <button class="danger" onclick="delCode(${c.id})">删除</button>
+      </td></tr>`).join('') || '<tr><td colspan="7" class="muted">暂无密令</td></tr>';
+}
+
+async function addCode() {
+  const body = {
+    text: document.getElementById('code-text').value.trim(),
+    reward: document.getElementById('code-reward').value.trim(),
+    status: document.getElementById('code-status').value,
+    valid_until: document.getElementById('code-until').value.trim(),
+  };
+  if (!body.text) return alert('密令文本必填');
+  await api('/codes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  ['code-text','code-reward','code-until'].forEach(i => document.getElementById(i).value = '');
+  loadCodes();
+}
+
+async function batchImport() {
+  const lines = document.getElementById('batch-area').value;
+  const r = await api('/codes/batch', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lines})});
+  document.getElementById('batch-msg').textContent = `成功 ${r.added} · 跳过 ${r.skipped}` + (r.errors.length ? ' · 失败 ' + r.errors.join(';') : '');
+  loadCodes();
+}
+
+async function setCodeStatus(id, status) {
+  const c = (await api('/codes')).codes.find(x => x.id === id);
+  await api('/codes/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+    text:c.text, reward:c.reward||'', status, valid_until:c.valid_until||'', batch:c.batch||'', remark:c.remark||''})});
+  loadCodes();
+}
+
+async function delCode(id) {
+  if (!confirm('删除密令 #' + id + '？')) return;
+  await api('/codes/' + id, {method:'DELETE'});
+  loadCodes();
+}
+
+// ---------- 运维 ----------
+async function loadHealth() {
+  try {
+    const h = await api('/health');
+    const kb = h.kb || {}, llm = h.llm || {};
+    document.getElementById('health-body').innerHTML = `
+      <div class="row">
+        <span class="stat"><b class="ok">●</b><span>服务 ${h.service}</span></span>
+        <span class="stat"><b>${kb.documents||0}</b><span>文档</span></span>
+        <span class="stat"><b>${kb.chunks||0}</b><span>分块</span></span>
+        <span class="stat"><b>${kb.codes||0}</b><span>密令</span></span>
+        <span class="stat"><b class="${llm.api_key_configured?'ok':'err'}">${llm.api_key_configured?'已配':'未配'}</b><span>API Key</span></span>
+        <span class="stat"><b>${llm.model||'?'}</b><span>对话模型</span></span>
+      </div>
+      <div class="muted" style="font-size:12px">端：${llm.base_url}</div>`;
+  } catch (e) { document.getElementById('health-body').innerHTML = `<span class="err">${e.message}</span>`; }
+}
+
+async function searchTest() {
+  const body = {query: document.getElementById('sq').value.trim(), tags: document.getElementById('stags').value.split(',').map(s=>s.trim()).filter(Boolean)};
+  if (!body.query) return;
+  const el = document.getElementById('search-result');
+  el.textContent = '检索中…';
+  try {
+    const r = await api('/kb/search-test', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    el.textContent = `渠道：${r.provider}\n` + r.hits.map(h => `[${(h.score*100).toFixed(0)}%] ${h.title||h.section||'无题'} :: ${h.text.slice(0,60)}`).join('\n') || '（无命中）';
+  } catch (e) { el.textContent = '❌ ' + e.message; }
+}
+
+// ---------- 模型 ----------
+async function loadModel() {
+  try {
+    const c = await api('/llm/config');
+    document.getElementById('model-body').textContent = JSON.stringify(c, null, 2);
+  } catch (e) { document.getElementById('model-body').textContent = '加载失败：' + e.message; }
+}
+
+async function llmTest() {
+  const prompt = document.getElementById('tp').value.trim();
+  const el = document.getElementById('llm-reply');
+  el.textContent = '对话中…';
+  try {
+    const r = await api('/llm/test', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt})});
+    el.textContent = (r.ok ? '' : '❌ ' + (r.error||'') + '\n') + (r.reply || '');
+  } catch (e) { el.textContent = '❌ ' + e.message; }
+}
+
+// init
+loadStats(); loadDocs();
+loadCodes();
+loadHealth(); loadModel();
+</script>
+</body>
+</html>

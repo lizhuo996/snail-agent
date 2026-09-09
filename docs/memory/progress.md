@@ -2,6 +2,24 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（P3 管理后台 v1）
+
+**完成（管理后台第一版，25 个 pytest 全过）**
+- 后端 `/api/admin/*`（routes_admin.py）：
+  - 知识库：stats / 文档列表 / 删除 / 分块加标签 / 标签统计 / 全量重建（subprocess 跑 build_kb.py）/ 检索测试（真 embedding，无 Key 退化为 BM25）
+  - 密令：列表（按状态）、新增（重复 400 拒绝）、编辑、删除、批量导入（每行一条 `密令|奖励|状态|有效期`）
+  - 运维：/health、/llm/config（只读）、/llm/test（测试对话）
+- 前端 `web/admin/index.html`：单页 4 Tab（知识库/密令/运维/模型），复用 19310 端口（不占新端口）
+- KB 层扩展管理方法：list_documents/delete_document/list_chunks/set_chunk_tags/all_tags/list_codes_all/update_code/delete_code
+- **发现并修复 BM25 语料过小 bug**：rank-bm25 新版本小语料 idf 为负 → min-max 归一化；单文档无区分度时给基准 0.5，避免搜索全空
+- 服务重启冒烟：admin health/kb stats/76 密令/Key 状态全部正常
+
+**下一步**
+- [ ] 浏览器 http://127.0.0.1:19310/admin 体验管理后台
+- [ ] 真实攻略入库后，用后台「重建」+「检索测试」验证
+- [ ] 密令批量导入（从后台粘贴，或运营提供奖励后补充）
+- [ ] P2：图片/多模态解析（视觉模型已在配置中）
+
 ## 2026-09-09 | 开发机（端口调整 19240 → 19310）
 
 **完成**

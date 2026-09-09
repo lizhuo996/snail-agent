@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from server.api import routes_chat
+from server.api import routes_admin, routes_chat
 from server.core.config import settings, BASE_DIR
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(routes_chat.router)
+app.include_router(routes_admin.router)
 
 
 @app.get("/api/health")

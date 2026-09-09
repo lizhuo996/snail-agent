@@ -165,18 +165,16 @@ class KB:
         merged: dict[int, dict] = {}
         for h in vec_hits[: max(10, top_k * 3)]:
             merged[h["id"]] = {**h, "score": (h["vec_score"] / max_vec if max_vec else 0) * (1 - settings.bm25_weight)}
-        bmax = max((x[1] for x in bm_hits), default=1.0)
-        for cid, b in bm_hits:
-            b_norm = b / bmax if bmax else 0.0
+        for cid, b in bm_hits:  # b 已归一化到 [0,1]
             if cid in merged:
-                merged[cid]["score"] = merged[cid].get("score", 0.0) + b_norm * settings.bm25_weight
+                merged[cid]["score"] = merged[cid].get("score", 0.0) + b * settings.bm25_weight
             else:
                 r = next((x for x in rows if x["id"] == cid), None)
                 if r:
                     hit = dict(r)
                     hit.pop("vector", None)
                     hit["tags"] = _parse_tags(hit.get("tags"))
-                    merged[cid] = {**hit, "vec_score": 0.0, "score": b_norm * settings.bm25_weight}
+                    merged[cid] = {**hit, "vec_score": 0.0, "score": b * settings.bm25_weight}
 
         # 4) 多标签 OR 过滤（D12）
         if tags:
@@ -189,7 +187,11 @@ class KB:
         return result
 
     def _bm25_rank(self, query: str, rows, top_k: int) -> List[tuple[int, float]]:
-        """用 rank-bm25 对全库文本打分，返回 [(chunk_id, score)]。"""
+        """用 rank-bm25 对全库文本打分，返回 [(chunk_id, 归一化分[0,1])]。
+
+        注意：rank-bm25 语料很小时 idf 可能为负，故用 min-max 归一化，
+        保证与向量分同量纲、排序正确（不能用 >0 过滤，会误杀小语料）。
+        """
         if not query.strip():
             return []
         if self._bm25 is None:
@@ -200,8 +202,85 @@ class KB:
                 return []
             self._bm25 = BM25Okapi(corpus)
         scores = self._bm25.get_scores(_cjk_tokenize(query))
+        bmin, bmax = float(scores.min()), float(scores.max())
+        if bmax <= bmin:
+            if bmax == 0:
+                return []  # 查询词与库完全无关
+            # 无区分度但确有命中（如语料仅 1 篇）：唯一文档给基准 0.5
+            top = max(range(len(rows)), key=lambda i: scores[i])
+            return [(rows[top]["id"], 0.5)]
         ranked = sorted(enumerate(rows), key=lambda x: scores[x[0]], reverse=True)[:top_k]
-        return [(rows[i]["id"], scores[i]) for i, _ in ranked if scores[i] > 0]
+        result = []
+        for i, _ in ranked:
+            norm = (float(scores[i]) - bmin) / (bmax - bmin)
+            result.append((rows[i]["id"], norm))
+        return result
+
+    # ---------- 管理（P3 admin） ----------
+    def list_documents(self) -> List[dict]:
+        rows = self._conn.execute(
+            "SELECT d.id, d.title, d.source_type, d.raw_path, d.created_at,"
+            " (SELECT COUNT(*) FROM chunks c WHERE c.doc_id = d.id) AS chunk_count"
+            " FROM documents d ORDER BY d.id DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def delete_document(self, doc_id: int) -> bool:
+        cur = self._conn.execute(
+            "DELETE FROM documents WHERE id=?", (doc_id,))
+        self._conn.execute("DELETE FROM chunks WHERE doc_id=?", (doc_id,))
+        self._conn.commit()
+        self._bm25 = None
+        return cur.rowcount > 0
+
+    def list_chunks(self, doc_id: Optional[int] = None, limit: int = 200) -> List[dict]:
+        sql = "SELECT id, doc_id, title, section, page, text, tags FROM chunks"
+        args: tuple = ()
+        if doc_id is not None:
+            sql += " WHERE doc_id=? "
+            args = (doc_id,)
+        sql += " ORDER BY id LIMIT ?"
+        rows = self._conn.execute(sql, args + (limit,)).fetchall()
+        return [dict(r) | {"tags": _parse_tags(r["tags"])} for r in rows]
+
+    def set_chunk_tags(self, chunk_id: int, tags: List[str]) -> bool:
+        cur = self._conn.execute(
+            "UPDATE chunks SET tags=? WHERE id=?",
+            (json.dumps(list(tags), ensure_ascii=False), chunk_id))
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def all_tags(self) -> List[dict]:
+        """返回标签名与出现次数（去重统计）。"""
+        rows = self._conn.execute("SELECT tags FROM chunks").fetchall()
+        counter: dict[str, int] = {}
+        for r in rows:
+            for t in _parse_tags(r["tags"]):
+                counter[t] = counter.get(t, 0) + 1
+        return [{"tag": k, "count": v} for k, v in sorted(counter.items(), key=lambda x: -x[1])]
+
+    def list_codes_all(self, status: str = "") -> List[dict]:
+        sql = "SELECT id,text,reward,status,valid_until,batch,remark FROM codes"
+        if status:
+            sql += " WHERE status=?"
+            rows = self._conn.execute(sql, (status,)).fetchall()
+        else:
+            sql += " ORDER BY id DESC"
+            rows = self._conn.execute(sql).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_code(self, code_id: int, reward: str = "", status: str = "生效",
+                    valid_until: str = "", batch: str = "", remark: str = "") -> bool:
+        cur = self._conn.execute(
+            "UPDATE codes SET reward=?, status=?, valid_until=?, batch=?, remark=? WHERE id=?",
+            (reward, status, valid_until, batch, remark, code_id))
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def delete_code(self, code_id: int) -> bool:
+        cur = self._conn.execute("DELETE FROM codes WHERE id=?", (code_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
 
     # ---------- 统计 ----------
     def stats(self) -> dict:
