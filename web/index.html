@@ -183,30 +183,31 @@ async function ask() {
     const dec = new TextDecoder();
     let buf = '', full = '';
     function processBlock(part) {
+      const evtLine = part.split('\n').find(l => l.startsWith('event:'));
       const dataLine = part.split('\n').find(l => l.startsWith('data:'));
       if (!dataLine) return;
-      let evt; try { evt = JSON.parse(dataLine.slice(5).trim()); } catch(e) { return; }
-      if (Array.isArray(evt)) {
-        // sources 事件：data 为裸数组（[{source,clause,...}]）
-        sources = evt;
+      let payload; try { payload = JSON.parse(dataLine.slice(5).trim()); } catch(e) { return; }
+      const name = evtLine ? evtLine.slice(6).trim() : '';
+      if (name === 'sources') {
+        sources = payload;
         const loadingEl = node.querySelector('.loading');
         if (loadingEl) loadingEl.remove();
-      } else if (evt.delta) {
-        full += evt.content;
+      } else if (name === 'delta') {
+        full += payload.content;
         renderDelta(node, full);
         scroll();
-      } else if (evt.parsed) {
+      } else if (name === 'parsed') {
         if (!attachRendered) {
           attachRendered = true;
           const boxAtt = document.createElement('div');
           boxAtt.className = 'att-box';
           boxAtt.innerHTML = '<b>已解析你的附件/链接</b><div class="excerpt"></div>';
           boxAtt.querySelector('.excerpt').textContent =
-            (evt.parsed.parts||[]).map(p => `${p.title}：${p.excerpt||'（空文本）'}`).join('\n');
+            (payload.parts||[]).map(p => `${p.title}：${p.excerpt||'（空文本）'}`).join('\n');
           node.prepend(boxAtt);
         }
-      } else if (evt.error) {
-        throw new Error(evt.message);
+      } else if (name === 'error') {
+        throw new Error(payload.message);
       }
     }
     while (true) {
