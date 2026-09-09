@@ -2,6 +2,23 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（管理后台在线导入攻略 + 通用化）
+
+**需求澄清**：用户要"所有攻略都能在线解析"，从后台页面或聊天页面直接做，不是针对单篇写死。
+**完成**
+- 后台在线导入后端 `server/api/routes_admin.py`：`POST /api/admin/kb/import`（url 抓正文 / text 粘贴正文）、`POST /api/admin/kb/import-file`（上传 PDF/Word/Excel/PPT/文本/图片，图片走 vision 双通道）；共用 `_ingest()`（切块→embed→入库）
+- 同标题去重：`KB.find_document_by_title()` + `_ingest` 409 拦截（重复导入不再叠文档），`test_kb_import_text` 补 409 断言
+- `parse_url` 通用化：httpx+UA+超时 60s+重试3次（微信限流防护）；正文区优先 js_content/article/body；**标题优先级 h1#activity-name → og:title → h1 → <title> → URL**（微信 <title> 标签内容为空，坑）
+- `KB.search` 维度保护：库内向量维度 != query 维度直接跳过（不崩）
+- 后台页面 `web/admin/index.html` 知识库 Tab 新增「📥 在线导入攻略」卡片：链接/正文/文件三入口 + 标题 + 标签 → 展示导入统计；node --check 通过
+- 测试 34 全过；服务冒烟：微信链接《本体攻略丨闪避率和命中率》导入成功（标题正确、chunks 1），重复导入返回 409
+- 知识库现状：4 文档 / 15 块 / 76 密令（新增 闪避率和命中率攻略）
+
+**下一步**
+- [ ] 用户验证：后台知识库 Tab 直接贴任意链接/正文/传文件入库；聊天页发链接/文件解析
+- [ ] 微信图片内容（本攻略图内数值）如需入库：把图片传文件入口（qwen-vl/ocr 双通道）
+- [ ] 其余同前
+
 ## 2026-09-09 | 开发机（聊天页改版：响应式 + 游戏风）
 
 **完成**

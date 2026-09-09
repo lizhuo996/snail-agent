@@ -147,3 +147,67 @@ def test_admin_code_dup_rejected(tmp_path):
     r = c.post("/api/admin/codes", json={"text": "重复", "reward": "x"})
     assert r.status_code == 400
     assert len(c.get("/api/admin/codes").json()["codes"]) == 1
+
+
+# ---------- 知识库在线导入（P2 落地） ----------
+def test_kb_import_text(tmp_path, monkeypatch):
+    from server.core.config import settings as cfg_settings
+
+    app, kb = make_app(tmp_path)
+    monkeypatch.setattr(cfg_settings, "dashscope_api_key", "")  # 模拟无 Key：不入向量（离线可测）
+    c = TestClient(app)
+    r = c.post("/api/admin/kb/import", json={
+        "text": "闪避率是躲过对手攻击的概率，格斗中实际闪避率=面板闪避率+降低敌人命中率-敌方命中率-敌方闪避抗性。",
+        "title": "闪避与命中", "tags": ["进阶玩法"],
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True and body["chunks"] >= 1
+    doc = kb.list_documents()[0]
+    assert body["title"] == "闪避与命中"
+    hits = kb.search([0.0] * 16, top_k=3, query="闪避率")
+    assert hits  # 入库后可检索
+    # 同标题二次导入 → 409 去重
+    r2 = c.post("/api/admin/kb/import", json={
+        "text": "重复内容", "title": "闪避与命中"})
+    assert r2.status_code == 409
+    assert kb.stats()["documents"] == 1
+
+
+def test_kb_import_from_url(tmp_path, monkeypatch):
+    app, kb = make_app(tmp_path)
+    from server.core.config import settings as cfg_settings
+
+    monkeypatch.setattr(cfg_settings, "dashscope_api_key", "")
+    c = TestClient(app)
+    from server.rag import parser as P
+
+    monkeypatch.setattr(P, "parse_url", lambda url: __import__("server.core.models",
+        fromlist=["ParsedContent"]).ParsedContent(
+        text="【正文】命中强化会让闪避率按 1-命中强化 的比例折算。", title="测试页面", source_type="html"))
+    r = c.post("/api/admin/kb/import", json={"url": "https://example.com/x", "tags": ["新手入门"]})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert kb.stats()["documents"] == 1
+    assert kb.list_documents()[0]["title"] == "测试页面"
+
+
+def test_kb_import_file_txt(tmp_path, monkeypatch):
+    from server.core.config import settings as cfg_settings
+
+    app, kb = make_app(tmp_path)
+    monkeypatch.setattr(cfg_settings, "dashscope_api_key", "")
+    c = TestClient(app)
+    r = c.post("/api/admin/kb/import-file",
+               files={"file": ("攻略.txt", "格斗里闪避率是越阶挑战的神器。".encode("utf-8"), "text/plain")},
+               data={"tags": "进阶玩法", "title": "闪避"})
+    assert r.status_code == 200
+    assert r.json()["chunks"] >= 1
+    assert kb.stats()["documents"] == 1
+
+
+def test_kb_import_empty_rejected(tmp_path):
+    app, kb = make_app(tmp_path)
+    c = TestClient(app)
+    r = c.post("/api/admin/kb/import", json={})
+    assert r.status_code == 400

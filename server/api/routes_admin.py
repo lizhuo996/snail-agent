@@ -9,12 +9,13 @@ import subprocess
 import sys
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from server.core.config import BASE_DIR, settings
-from server.core.models import Code
+from server.core.models import Code, Document
 from server.rag import kb as kb_mod
+from server.rag import parser
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin")
@@ -55,6 +56,14 @@ class SearchTestReq(BaseModel):
 
 class LLMTestReq(BaseModel):
     prompt: str = "用一句话介绍最强蜗牛"
+
+
+class KbImportReq(BaseModel):
+    url: Optional[str] = None          # 网页链接（抓正文）
+    text: Optional[str] = None         # 直接粘贴攻略正文
+    title: str = ""                    # 文档标题（缺省用链接域名 / 前 20 字）
+    tags: List[str] = []               # 全局标签（D12）
+    image_channels: List[str] = []     # 保留字段：多图 URL 解析通道（暂不支持，仅文档）
 
 
 # ---------- 知识库 ----------
@@ -120,6 +129,109 @@ def kb_search_test(req: SearchTestReq):
     vec = embed_texts([req.query])[0]
     hits = get_kb().search(vec, top_k=req.top_k, tags=req.tags, query=req.query)
     return {"provider": "vector+bm25", "hits": hits}
+
+
+# ---------- 知识库在线导入（P2 落地：后台直接贴链接/正文/传文件入库） ----------
+def _ingest(content, title: str, tags: List[str], raw_path: str = "") -> dict:
+    """解析结果 → 切块 → 向量化 → 入库。返回入库统计。"""
+    from datetime import datetime
+
+    from server.core.llm import embed_texts
+    from server.rag.chunker import chunk_document
+
+    kb = get_kb()
+    doc_title = title or content.title or content.text.strip()[:20]
+    dup_id = kb.find_document_by_title(doc_title)
+    if dup_id:
+        raise HTTPException(409, f"已存在同标题文档（ID {dup_id}）：{doc_title}。如需更新请先删除原文档")
+    chunks = chunk_document(
+        Document(id=0, title=doc_title), content.text, tags=tags)
+    if not chunks:
+        raise HTTPException(400, "解析结果为空，无法入库")
+
+    if settings.dashscope_api_key:
+        vectors = embed_texts([c.text for c in chunks])
+        for c, vec in zip(chunks, vectors):
+            c.vector = vec
+
+    doc_id = kb.add_document(Document(
+        title=doc_title,
+        source_type=content.source_type,
+        raw_path=raw_path,
+        created_at=datetime.now().isoformat(timespec="seconds"),
+    ))
+    for c in chunks:
+        c.doc_id = doc_id
+    kb.add_chunks(chunks)
+    return {"doc_id": doc_id, "title": doc_title, "chunks": len(chunks),
+            "source_type": content.source_type}
+
+
+@router.post("/kb/import")
+def kb_import(req: KbImportReq):
+    """在线导入：url（抓网页正文）或 text（粘贴正文）→ 解析 → 向量化 → 入库。"""
+    from server.core.models import ParsedContent
+    from server.rag.parser import parse_url
+
+    if req.url:
+        try:
+            content = parse_url(req.url)
+        except Exception as e:
+            raise HTTPException(400, f"网页解析失败：{e}")
+        raw_path = req.url
+    elif req.text and req.text.strip():
+        content = ParsedContent(text=req.text.strip(), source_type="text",
+                                title=req.title or "粘贴文本")
+        raw_path = "粘贴文本"
+    else:
+        raise HTTPException(400, "需要 url 或 text 之一")
+
+    try:
+        result = _ingest(content, req.title, req.tags, raw_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"入库失败：{e}")
+    return {"ok": True, **result}
+
+
+@router.post("/kb/import-file")
+async def kb_import_file(
+    file: UploadFile = File(...),
+    tags: str = Form(""),
+    title: str = Form(""),
+):
+    """在线导入文件（PDF/Word/Excel/PPT/文本/图片，图片走 qwen-vl 双通道）→ 入库。"""
+    import tempfile
+    from pathlib import Path
+
+    from server.rag.parser import parse_path
+
+    name = file.filename or "upload.bin"
+    ext = Path(name).suffix.lower()
+    if ext not in parser.SUPPORTED:
+        raise HTTPException(400, f"不支持的格式：{ext or '(无扩展名)'}")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "空文件")
+    tmpdir = Path(tempfile.gettempdir()) / "snail_admin_import"
+    tmpdir.mkdir(parents=True, exist_ok=True)
+    tmp = tmpdir / f"kb_{name}"
+    tmp.write_bytes(data)
+    try:
+        content = parse_path(tmp)
+    except Exception as e:
+        raise HTTPException(400, f"解析失败：{e}")
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    tags = [t.strip() for t in tags.split(",") if t.strip()]
+    try:
+        result = _ingest(content, title or name, tags, raw_path=name)
+    except Exception as e:
+        raise HTTPException(500, f"入库失败：{e}")
+    return {"ok": True, **result}
 
 
 # ---------- 密令 ----------

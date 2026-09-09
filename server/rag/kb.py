@@ -77,6 +77,12 @@ class KB:
         self._bm25 = None  # rank-bm25 索引缓存，增删库后失效
 
     # ---------- 建库 ----------
+    def find_document_by_title(self, title: str) -> Optional[int]:
+        """按标题精确查文档 ID（在线导入去重用），不存在返回 None。"""
+        row = self._conn.execute(
+            "SELECT id FROM documents WHERE title=? LIMIT 1", (title,)).fetchone()
+        return row["id"] if row else None
+
     def add_document(self, doc: Document) -> int:
         cur = self._conn.execute(
             "INSERT INTO documents(title, source_type, raw_path, created_at) VALUES(?,?,?,?)",
@@ -148,6 +154,8 @@ class KB:
             if not blob:
                 continue
             v = np.frombuffer(blob, dtype=np.float32)
+            if v.shape[0] != q.shape[0]:
+                continue  # 向量维度不一致（不同 embedding 模型残存），跳过
             vn = np.linalg.norm(v)
             if vn == 0:
                 continue

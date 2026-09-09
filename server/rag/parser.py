@@ -4,6 +4,7 @@
 P1 先支持 PDF/Word/HTML/txt/md；Excel/PPT/图片 属 P2，但分发表已就绪。
 """
 import logging
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -49,20 +50,49 @@ def parse_path(path: str | Path, image_channel: str = "auto") -> ParsedContent:
 
 
 def parse_url(url: str) -> ParsedContent:
-    """网页正文提取（P2 完整，P1 骨架）。"""
+    """网页正文提取（通用：任意链接抓正文；微信文章取 js_content 节点）。"""
     try:
         import httpx
         from bs4 import BeautifulSoup
     except ImportError:
         raise RuntimeError("抓取网页需要 httpx + beautifulsoup4，请检查依赖")
-    resp = httpx.get(url, timeout=20, follow_redirects=True)
-    resp.raise_for_status()
+    resp = None
+    last_err: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            resp = httpx.get(url, timeout=60, follow_redirects=True,
+                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                                                    "AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
+            resp.raise_for_status()
+            break
+        except Exception as e:  # noqa: BLE001 微信等站点偶发限流，重试 3 次
+            last_err = e
+            time.sleep(1.5 * (attempt + 1))
+    if resp is None:
+        raise RuntimeError(f"抓取失败（已重试 3 次）：{last_err}")
     soup = BeautifulSoup(resp.text, "html.parser")
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+    # 优先微信正文 / article / body 作为正文区，避免抓到导航与广告
+    content_el = (soup.find("div", id="js_content") or soup.find("article")
+                  or soup.body or soup)
+    for tag in content_el(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()
-    text = soup.get_text(separator="\n")
+    text = content_el.get_text(separator="\n")
     text = "\n".join(ln.strip() for ln in text.splitlines() if ln.strip())
-    return ParsedContent(text=text, source_type="html", title=soup.title.string.strip() if soup.title else url, meta={"url": url})
+    # 标题优先级：微信 h1#activity-name → og:title → h1 → <title> → URL
+    title = ""
+    an = soup.find("h1", id="activity-name")
+    if an:
+        title = an.get_text(strip=True)
+    if not title:
+        og = soup.find("meta", property="og:title")
+        title = (og.get("content") or "").strip() if og else ""
+    if not title:
+        h1 = soup.find("h1")
+        title = h1.get_text(strip=True) if h1 else ""
+    if not title and soup.title:
+        title = soup.title.get_text(strip=True)
+    return ParsedContent(text=text, source_type="html",
+                         title=title or url, meta={"url": url})
 
 
 def _parse_txt(p: Path) -> ParsedContent:

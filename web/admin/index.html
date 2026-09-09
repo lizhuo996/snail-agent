@@ -61,6 +61,26 @@
     <div class="log" id="rebuild-log" style="display:none"></div>
   </div>
 
+  <div class="card" style="border-color:#3a3058;background:linear-gradient(180deg,#241f3a,#1a1e29)">
+    <h2>📥 在线导入攻略（解析后直接入库）</h2>
+    <div class="row">
+      <select id="imp-type">
+        <option value="url">🔗 粘贴链接</option>
+        <option value="text">📝 粘贴正文</option>
+        <option value="file">📎 上传文件</option>
+      </select>
+      <input id="imp-title" placeholder="标题（可选）" style="width:200px">
+      <input id="imp-tags" placeholder="标签，逗号分隔（如 进阶玩法）" style="width:220px">
+    </div>
+    <input id="imp-url" placeholder="https://mp.weixin.qq.com/... 支持任意网页链接（自动抓正文）" style="width:100%;margin-top:8px">
+    <textarea id="imp-text" rows="5" placeholder="或直接把攻略正文粘贴到这里" style="width:100%;margin-top:8px;display:none"></textarea>
+    <input type="file" id="imp-file" style="margin-top:8px;display:none" accept=".pdf,.docx,.xlsx,.pptx,.html,.htm,.txt,.md,.png,.jpg,.jpeg,.gif,.webp,.bmp">
+    <div class="row" style="margin-top:10px">
+      <button onclick="kbImport()">🚀 解析并入库</button>
+      <span class="muted" id="imp-msg"></span>
+    </div>
+  </div>
+
   <div class="card">
     <h2>文档列表（点击行查看分块）</h2>
     <div class="toolbar">
@@ -140,6 +160,54 @@ async function api(path, opts) {
 }
 
 // ---------- 知识库 ----------
+const impType = document.getElementById('imp-type');
+function impPanel() {
+  const t = impType.value;
+  document.getElementById('imp-url').style.display = t === 'url' ? '' : 'none';
+  document.getElementById('imp-text').style.display = t === 'text' ? '' : 'none';
+  document.getElementById('imp-file').style.display = t === 'file' ? '' : 'none';
+}
+impType.onchange = impPanel;
+impPanel();
+
+async function kbImport() {
+  const msg = document.getElementById('imp-msg');
+  const t = impType.value;
+  const title = document.getElementById('imp-title').value.trim();
+  const tags = document.getElementById('imp-tags').value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+  msg.textContent = '⏳ 解析中…（链接/图片较慢，请稍候）';
+  try {
+    let r;
+    if (t === 'file') {
+      const f = document.getElementById('imp-file').files[0];
+      if (!f) throw new Error('请选择文件');
+      const fd = new FormData();
+      fd.append('file', f);
+      if (title) fd.append('title', title);
+      if (tags.length) fd.append('tags', tags.join(','));
+      r = await api('/kb/import-file', { method: 'POST', body: fd });
+    } else {
+      const body = { title, tags };
+      if (t === 'url') {
+        const url = document.getElementById('imp-url').value.trim();
+        if (!url) throw new Error('请粘贴链接');
+        body.url = url;
+      } else {
+        const text = document.getElementById('imp-text').value.trim();
+        if (!text) throw new Error('请粘贴正文');
+        body.text = text;
+        body.title = title || text.slice(0, 20);
+      }
+      r = await api('/kb/import', { method: 'POST',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+    }
+    msg.textContent = `✔ 已入库：${r.title}（${r.chunks} 块）`;
+    loadStats(); loadDocs();
+  } catch (e) {
+    msg.textContent = '✖ ' + e.message;
+  }
+}
+
 async function loadStats() {
   try {
     const s = await api('/kb/stats');
