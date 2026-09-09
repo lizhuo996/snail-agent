@@ -12,10 +12,10 @@ Copy-Item .env.example .env   # 填入 DASHSCOPE_API_KEY
 
 # 2. 建库 + 启动服务
 python scripts/build_kb.py
-python -m uvicorn server.api.main:app --reload --port 19240
+python -m uvicorn server.api.main:app --reload --port 19310
 ```
 
-访问 http://localhost:19240 打开聊天页，http://localhost:19240/admin 打开管理后台。
+访问 http://localhost:19310 打开聊天页，http://localhost:19310/admin 打开管理后台。
 
 ## 文档导航
 

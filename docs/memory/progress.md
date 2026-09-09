@@ -2,6 +2,17 @@
 
 > 格式：`## 日期 | 机器` + 完成 / 下一步
 
+## 2026-09-09 | 开发机（端口调整 19240 → 19310）
+
+**完成**
+- 用户反馈：snail-agent 与 devplan-agent 抢端口 —— 19240 是 devplan 的端口
+- 服务端口调整为 **19310**：`server/core/config.py`、AGENTS.md、README、.env.example、设计文档、decisions.md(D1 备注)、env-setup.md 全部同步
+- 前端 fetch 均为同源相对路径，无端口硬编码，无需改
+
+**下一步**
+- [ ] 浏览器打开 http://127.0.0.1:19310 验证（旧的 19240 不再用）
+- [ ] 真实攻略放 knowledge/raw 后重建知识库
+
 ## 2026-09-09 | 开发机（前端 SSE 解析再加固）
 
 **完成**
@@ -27,7 +38,7 @@
 - 19 个 pytest 全过；服务重启后实测“有什么密令？”返回 76 条
 
 **下一步**
-- [ ] 浏览器 http://127.0.0.1:19240 验证聊天（密令与 RAG 两个场景）
+- [ ] 浏览器 http://127.0.0.1:19310 验证聊天（密令与 RAG 两个场景）
 - [ ] 真实攻略放 knowledge/raw 后重建知识库
 - [ ] 密令奖励待运营核实补充（管理后台 P3 落地后可自行维护）
 
@@ -39,7 +50,7 @@
   - 专属兼容 endpoint（ws-9spiuint1t7qzds8.cn-beijing.maas.aliyuncs.com/compatible-mode/v1）→ `.env`（gitignore）
   - `.gitignore` 新增 `docs/reference/*apiKey*.csv`，敏感 csv 确认不入库
 - 实测连通：embedding 1024 维 OK（HTTP 200）、qwen-plus 对话流式 OK
-- 用脱敏示例建真实知识库（真 embedding）→ 启动服务(19240) → /api/health `api_key_configured: True`
+- [ ] 用脱敏示例建真实知识库（真 embedding）→ 启动服务(19240→后改19310) → /api/health `api_key_configured: True`
 - **发现并修复 bug**：检索 score 为 numpy.float32 导致 SSE JSON 序列化失败（`Object of type float32 is not JSON serializable`），kb.py 改为 `float()` 强转
 - 全链路验证通过：sources（来源+相关度 0.6）→ delta 流式回答 → done
 

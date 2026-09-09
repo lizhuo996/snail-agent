@@ -103,7 +103,7 @@ $py scripts/build_kb.py
 $py -m pytest tests/ -v
 
 # 启动 AI 服务
-$py -m uvicorn server.api.main:app --reload --port 19240
+$py -m uvicorn server.api.main:app --reload --port 19310
 ```
 
 ## 当前状态

@@ -42,10 +42,10 @@ Copy-Item .env.example .env
 ## 6. 启动服务
 
 ```powershell
-& "D:\SoftWare\Python312\python.exe" -m uvicorn server.api.main:app --reload --port 19240
+& "D:\SoftWare\Python312\python.exe" -m uvicorn server.api.main:app --reload --port 19310
 ```
 
-访问 http://localhost:19240 （聊天页）、/admin（管理后台）。
+访问 http://localhost:19310 （聊天页）、/admin（管理后台）。
 
 ## 常见问题
 

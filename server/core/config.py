@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     kb_db_path: str = "data/kb.sqlite3"
 
     # 服务
-    ai_service_port: int = 19240
+    ai_service_port: int = 19310
 
     # 检索参数
     top_k_default: int = 5
