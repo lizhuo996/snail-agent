@@ -100,7 +100,8 @@ class KB:
         self._bm25 = None
 
     def clear(self) -> None:
-        self._conn.executescript("DELETE FROM chunks; DELETE FROM documents; DELETE FROM codes;")
+        """清空知识库（文档+块）。密令(codes)是独立运营数据，重建攻略库不清空。"""
+        self._conn.executescript("DELETE FROM chunks; DELETE FROM documents;")
         self._conn.commit()
         self._bm25 = None
 

@@ -65,5 +65,9 @@ def test_code_roundtrip(kb):
 
 
 def test_clear(kb):
+    kb.add_code(Code(text="唯一码", reward="x1", status="生效"))
     kb.clear()
     assert kb.stats()["chunks"] == 0
+    assert kb.stats()["documents"] == 0
+    # 密令是独立运营数据，重建攻略库不清空
+    assert [c["text"] for c in kb.search_codes()] == ["唯一码"]
