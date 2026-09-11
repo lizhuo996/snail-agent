@@ -5,37 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>最强蜗牛攻略后台</title>
 <style>
-  :root { --bg:#0f1117; --panel:#1a1e29; --panel2:#222838; --line:#2e3342; --text:#e8eaf0; --muted:#9aa3b5; --accent:#4c8dff; --ok:#2ecc71; --warn:#f39c12; --err:#ff6b6b; }
+  :root { --bg:#0f1117; --panel:#1a1e29; --panel2:#222838; --line:#2e3342; --text:#e8eaf0; --muted:#9aa3b5; --accent:#ffd76a; --accent2:#e6c233; --ok:#2ecc71; --warn:#f39c12; --err:#ff6b6b; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:"Microsoft YaHei",sans-serif; }
-  header { padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; }
-  header h1 { font-size:18px; }
+  body { background:linear-gradient(180deg,#0d0f1a 0%,#141829 40%,#0f1117 100%); background-attachment:fixed; color:var(--text); font-family:"Microsoft YaHei",sans-serif; min-height:100vh; }
+  header { padding:14px 24px; background:linear-gradient(90deg,#1a1530,#1e1a35); border-bottom:1px solid #3a3058; display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:18px; background:linear-gradient(90deg,#ffd76a,#ffaa00); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   nav { display:flex; gap:6px; margin-left:auto; }
-  nav button { background:none; border:none; color:var(--muted); padding:8px 14px; cursor:pointer; border-radius:8px; font-size:14px; }
-  nav button.active { background:var(--accent); color:#fff; }
+  nav button { background:none; border:none; color:var(--muted); padding:8px 14px; cursor:pointer; border-radius:8px; font-size:14px; transition:all .2s; }
+  nav button.active { background:var(--accent); color:#1a1530; font-weight:600; }
+  nav button:hover:not(.active) { color:var(--accent); }
   main { padding:20px 24px; max-width:1100px; margin:0 auto; }
   .page { display:none; } .page.active { display:block; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:16px; transition:border-color .2s; }
+  .card:hover { border-color:#3a3058; }
   .card h2 { font-size:15px; margin-bottom:12px; color:var(--muted); }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
   th { color:var(--muted); font-weight:normal; }
-  td code { color:#82aaff; }
+  td code { color:#ffd76a; }
   input,select,textarea { background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:8px; font-size:13px; }
   textarea { width:100%; resize:vertical; font-family:inherit; }
-  button { background:var(--accent); border:none; color:#fff; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
-  button.ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--line); }
-  button.danger { background:transparent; color:var(--err); border:1px solid var(--err); }
+  button { background:linear-gradient(135deg,#ffd76a,#e6c233); border:none; color:#1a1530; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; transition:all .2s; }
+  button:hover { filter:brightness(1.1); box-shadow:0 0 12px rgba(255,215,106,.3); }
+  button.ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--line); font-weight:normal; }
+  button.ghost:hover { color:var(--accent); border-color:var(--accent); box-shadow:none; }
+  button.danger { background:transparent; color:var(--err); border:1px solid var(--err); font-weight:normal; }
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
   .stat { display:inline-flex; flex-direction:column; background:var(--panel2); padding:10px 16px; border-radius:10px; margin-right:10px; }
   .stat b { font-size:20px; color:var(--accent); }
   .stat span { color:var(--muted); font-size:12px; margin-top:2px; }
   .ok { color:var(--ok); } .warn { color:var(--warn); } .err { color:var(--err); } .muted { color:var(--muted); }
-  .tag { display:inline-block; background:#2b3a67; color:#a8c0ff; border-radius:8px; padding:2px 8px; font-size:12px; margin:2px; }
+  .tag { display:inline-block; background:#2b2a3a; color:var(--accent); border:1px solid #3a3058; border-radius:8px; padding:2px 8px; font-size:12px; margin:2px; }
   .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
   .log { background:#0a0d13; border:1px solid var(--line); border-radius:8px; padding:10px; font-family:Consolas,monospace; font-size:12px; white-space:pre-wrap; color:#9ddc8e; max-height:260px; overflow:auto; }
   .badge { padding:2px 8px; border-radius:8px; font-size:12px; }
   .badge.on { background:#143b25; color:#2ecc71; } .badge.off { background:#3b2414; color:#f39c12; } .badge.exp { background:#3b1414; color:#ff6b6b; }
+  @media (max-width:640px) {
+    header { padding:10px 14px; flex-wrap:wrap; }
+    header h1 { font-size:15px; }
+    nav { gap:2px; }
+    nav button { padding:6px 10px; font-size:12px; }
+    main { padding:12px 10px; }
+    .card { padding:12px 10px; }
+    .row { gap:6px; }
+    input,select,textarea { font-size:14px; padding:10px; }
+    button { padding:10px 16px; font-size:14px; }
+    table { font-size:12px; }
+    th,td { padding:6px 6px; }
+    .stat { padding:8px 10px; margin-right:6px; }
+    .stat b { font-size:16px; }
+  }
 </style>
 </head>
 <body>
