@@ -125,6 +125,28 @@
   4. `scripts/build_kb.py` 默认解析图片（`--no-images` 关闭），并支持 `--urls` 网页批量入库；
   5. PaddleOCR 未装时抛"明确报错"提示安装 requirements-ocr.txt，不静默失败。
 
+## D18 密令自动提取 + 网页图片解析（补充 D13/D9 落地）
+- 日期：2026-09-14
+- 背景：用户反馈"发链接只读文字、图片没解析、链接里的密令也没入密令库"。原实现 `parse_url` 只提正文、完全忽略 `<img>`；codes 表只能靠 P3 后台手动导入，无自动提取。
+- 决策：
+  1. **密令自动提取** `server/rag/code_extractor.py`：规则式识别「密令/兑换码/口令/礼包码/激活码/福利码/神秘代码」引导词后的码（中文 3~20 字 / 字母数字 2~20 位），抓码后 60 字内奖励短语；去重入库 codes 表（不覆盖已有奖励）；不引 LLM/新依赖，离线可测；
+  2. **接入位置**：建库导入 `_ingest`、批量建库 `scripts/build_kb.py`、聊天粘链接/附件 `chat-upload`（parsed 事件展示收录条数）三处复用；
+  3. **网页图片解析**：`parse_url` 下载 `<img>`（优先 `data-src` 懒加载）→ vision/OCR 双通道解析 → 文本追加正文末尾（`[图片·通道]`）；best-effort 失败仅告警，跳过 data URI/重复/小于 3KB 图标；`max_images=8` 参数可调；
+  4. **vision 守卫**：`VLImageReader.read()` vision_model 为空时明确中文报错；`get_reader("auto")` 在 vision_model 未配置时回退 OCR（不再因 API Key 存在就强制走 VL）；
+  5. 备注：本机 Ollama 尚无视觉模型，图片解析需拉视觉模型或装 PaddleOCR（requirements-ocr.txt）；密令提取不依赖图片，规则式即可跑。
+
+## D17 模型服务切换：云端 DashScope → 本地 Ollama（默认）
+- 日期：2026-09-14
+- 背景：本机无阿里云百炼 API Key（占位 401）；用户确认改用本地已有模型。
+- 决策：
+  1. **对话模型**：`qwen2.5:7b`（本地 Ollama，本机 RTX 2060 SUPER 8GB 显存，量化后约 4.7GB 可流畅跑）；
+  2. **Embedding**：`nomic-embed-text`（768 维，轻量 274MB，本地向量化零云依赖）；
+  3. OpenAI 兼容端点 `http://localhost:11434/v1`（Ollama 自带），代码层零改动只改配置；D2 的"切自建 vLLM 只改 base_url/模型名"设计仍成立；
+  4. 沿用 D3 的"向量化走 OpenAI 兼容接口"设计，只换 embed model；建库/检索/RAG 全链路不变；
+  5. `embed_dim` 默认 1024→768（text-embedding-v3 是 1024，nomic-embed-text 是 768）；
+  6. 云端 API Key 未配置时用 Ollama，不校验 Key（本地无鉴权）；`vision_model` 默认留空（本地暂未拉视觉模型，P2 图片解析按 D9 走 OCR 或后续拉 qwen2.5-vl）。
+- 影响：旧知识库向量维度 1024 与本地 768 不一致，需全量重建（`scripts/build_kb.py` 已清库重建）。
+
 ## D16 rank-bm25 极小语料打分异常修复（min-max 归一化）
 - 日期：2026-09-09
 - 背景：rank-bm25 新版本在语料极小（尤其单文档）时 idf 为负，`score > 0` 过滤会把唯一/少量命中全部滤空，导致检索返回空。

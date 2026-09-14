@@ -82,6 +82,15 @@ def main() -> None:
         if not content.text.strip():
             log.warning("无正文，跳过: %s", name)
             return
+
+        # 密令自动提取（D18）：正文/附图里的兑换码去重入库（D13 结构化查询）
+        from server.rag.code_extractor import extract_codes_to_kb
+
+        codes_added = extract_codes_to_kb(
+            content.text, kb, batch=content.title or name, remark="建库自动提取")
+        if codes_added:
+            log.info("自动提取密令 %d 条: %s", codes_added, name)
+
         doc_id = kb.add_document(Document(
             title=content.title or name,
             source_type=content.source_type,

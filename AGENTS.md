@@ -13,10 +13,11 @@ Demo 阶段范围：全套攻略建知识库（轻量检索：SQLite 向量近�
 | 层 | 技术 |
 |---|---|
 | AI 服务 | Python 3.12 + FastAPI + SSE 流式 |
-| 大模型 | 通义千问 API（DashScope，OpenAI 兼容接口），demo 用 qwen-plus |
-| 向量化 | DashScope text-embedding-v3（检索用，OpenAI 兼容接口） |
+| 大模型 | 本地 Ollama（qwen2.5:7b，对话；nomic-embed-text，向量化，768维）（D17） |
+| 向量化 | Ollama nomic-embed-text（本地，零云依赖） / 备选：DashScope text-embedding-v3（云端） |
 | 知识库存储 | SQLite（系统内置 sqlite3，零依赖）：向量近似 + FTS5 关键词/BM25 混检（D4） |
 | 文档解析 | PyMuPDF + pdfplumber（PDF 正文+表格），python-docx（Word），HTML/纯文本直接收 |
+| 图片解析 | PaddleOCR（本地离线，可选） / Ollama qwen2.5-vl（待拉，多模态） |
 | 工具层 | 进程内 ToolRegistry，接口按 MCP 规范设计，三期拆独立 MCP server（沿用 devplan D5） |
 | 管理后台 | 原生 HTML+JS（`web/admin/`），管理 API 前缀 `/api/admin/*`，随功能阶段配套（沿用 D17 思路） |
 | 前端 | 单页 HTML+JS（原生 fetch + SSE） |

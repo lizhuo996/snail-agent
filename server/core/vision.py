@@ -42,6 +42,11 @@ class VLImageReader(ImageReader):
     def read(self, image_path: str | Path) -> str:
         from openai import OpenAI
 
+        if not settings.vision_model:
+            raise RuntimeError(
+                "未配置视觉模型（vision_model 为空），无法走多模态解析；"
+                "请在 .env 配置本地视觉模型（如 qwen2.5-vl），或用 OCR 通道"
+            )
         if not settings.dashscope_api_key:
             raise RuntimeError("未配置 DashScope Key，无法使用多模态解析")
         client = OpenAI(api_key=settings.dashscope_api_key, base_url=settings.llm_base_url)
@@ -110,8 +115,8 @@ def get_reader(channel: str = "auto") -> ImageReader:
         return VLImageReader()
     if channel == "ocr":
         return PaddleImageReader()
-    # auto：有 Key 用多模（对话语义更好），可强制切 OCR 批量
-    if settings.dashscope_api_key:
+    # auto：配置了视觉模型且 Key 可用 → 多模（语义好）；否则回退 OCR
+    if settings.vision_model and settings.dashscope_api_key:
         return VLImageReader()
     return PaddleImageReader()
 

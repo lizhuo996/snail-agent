@@ -138,6 +138,7 @@ def _ingest(content, title: str, tags: List[str], raw_path: str = "") -> dict:
 
     from server.core.llm import embed_texts
     from server.rag.chunker import chunk_document
+    from server.rag.code_extractor import extract_codes_to_kb
 
     kb = get_kb()
     doc_title = title or content.title or content.text.strip()[:20]
@@ -148,6 +149,10 @@ def _ingest(content, title: str, tags: List[str], raw_path: str = "") -> dict:
         Document(id=0, title=doc_title), content.text, tags=tags)
     if not chunks:
         raise HTTPException(400, "解析结果为空，无法入库")
+
+    # 密令自动提取（D18）：正文/附图里的兑换码去重入库（D13 结构化查询）
+    codes_added = extract_codes_to_kb(
+        content.text, kb, batch=doc_title or "在线导入", remark="导入自动提取")
 
     if settings.dashscope_api_key:
         vectors = embed_texts([c.text for c in chunks])
@@ -164,7 +169,7 @@ def _ingest(content, title: str, tags: List[str], raw_path: str = "") -> dict:
         c.doc_id = doc_id
     kb.add_chunks(chunks)
     return {"doc_id": doc_id, "title": doc_title, "chunks": len(chunks),
-            "source_type": content.source_type}
+            "source_type": content.source_type, "codes_added": codes_added}
 
 
 @router.post("/kb/import")

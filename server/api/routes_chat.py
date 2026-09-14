@@ -75,13 +75,25 @@ def _stream(question: str, top_k: int, tags: Optional[List[str]],
             **_) -> Generator[str, None, None]:
     # attachments: [{"title","text","source_type","meta"}...]（P2 场景A 对话侧解析）
     if attachments:
-        yield _sse("parsed", {
-            "parts": [
-                {"title": a.get("title", ""), "type": a.get("source_type", ""),
-                 "excerpt": a.get("text", "")[:200]}
-                for a in attachments
-            ],
-        })
+        # 密令自动提取（D18）：链接/附件正文里的兑换码去重入库（D13 结构化查询）
+        codes_added = 0
+        try:
+            from server.rag.code_extractor import extract_codes_to_kb
+            for a in attachments:
+                codes_added += extract_codes_to_kb(
+                    a.get("text", "") or "", get_kb(),
+                    batch=a.get("title", "") or "聊天附件", remark="聊天自动提取")
+        except Exception as e:  # noqa: BLE001 提取失败不影响对话
+            log.warning("聊天密令提取失败: %s", e)
+        parts = [
+            {"title": a.get("title", ""), "type": a.get("source_type", ""),
+             "excerpt": a.get("text", "")[:200]}
+            for a in attachments
+        ]
+        if codes_added:
+            parts.append({"title": "密令", "type": "code",
+                          "excerpt": f"已自动收录 {codes_added} 条密令到密令库，可直接问“有什么密令”"})
+        yield _sse("parsed", {"parts": parts})
     try:
         # 1. 密令提问优先走结构化（D13）：精确命中直接答；泛指“有什么密令”则列表全部
         hits = get_kb().search_codes(question)
